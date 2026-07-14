@@ -475,6 +475,8 @@ func (r *Router) repoRouter() {
 			repoRoutes.PATCH("", authMiddleware.RequireAuth(), h.UpdateRepository)
 			repoRoutes.DELETE("", authMiddleware.RequireAuth(), h.DeleteRepository)
 			repoRoutes.GET("/stats", authMiddleware.Authenticate(), h.GetRepositoryStats)
+			repoRoutes.GET("/contributors", authMiddleware.Authenticate(), h.GetContributors)
+			repoRoutes.GET("/activity", authMiddleware.Authenticate(), h.GetRepoActivity)
 
 			// Branch routes
 			repoRoutes.GET("/branches", authMiddleware.Authenticate(), h.ListBranches)
@@ -492,14 +494,26 @@ func (r *Router) repoRouter() {
 			repoRoutes.GET("/diff/:hash", authMiddleware.Authenticate(), h.GetDiff)
 			repoRoutes.GET("/compare/:range", authMiddleware.Authenticate(), h.GetCompareDiff)
 
-			// Tree/code structure routes
+			// Tree/code structure routes (query-param fallback for branch names with /)
+			repoRoutes.GET("/tree/_", authMiddleware.Authenticate(), h.GetTree)
+			repoRoutes.GET("/tree/_/*path", authMiddleware.Authenticate(), h.GetTree)
 			repoRoutes.GET("/tree/:ref", authMiddleware.Authenticate(), h.GetTree)
 			repoRoutes.GET("/tree/:ref/*path", authMiddleware.Authenticate(), h.GetTree)
 
 			// File content routes
+			repoRoutes.GET("/blob/_/*path", authMiddleware.Authenticate(), h.GetFileContent)
 			repoRoutes.GET("/blob/:ref/*path", authMiddleware.Authenticate(), h.GetFileContent)
 
+			// Raw file content routes (curlable, plain text)
+			repoRoutes.GET("/raw/_/*path", authMiddleware.Authenticate(), h.GetRawFile)
+			repoRoutes.GET("/raw/:ref/*path", authMiddleware.Authenticate(), h.GetRawFile)
+
+			// File commit info routes (last commit that touched a path)
+			repoRoutes.GET("/file-commit/_/*path", authMiddleware.Authenticate(), h.GetFileCommit)
+			repoRoutes.GET("/file-commit/:ref/*path", authMiddleware.Authenticate(), h.GetFileCommit)
+
 			// Blame routes
+			repoRoutes.GET("/blame/_/*path", authMiddleware.Authenticate(), h.GetBlame)
 			repoRoutes.GET("/blame/:ref/*path", authMiddleware.Authenticate(), h.GetBlame)
 
 			// Mirror sync routes
@@ -509,6 +523,9 @@ func (r *Router) repoRouter() {
 			// Mirror settings routes
 			repoRoutes.GET("/mirror", authMiddleware.Authenticate(), h.GetMirrorSettings)
 			repoRoutes.PATCH("/mirror", authMiddleware.RequireAuth(), h.UpdateMirrorSettings)
+
+			// License detection route
+			repoRoutes.GET("/license", authMiddleware.Authenticate(), h.GetLicense)
 		}
 	}
 }

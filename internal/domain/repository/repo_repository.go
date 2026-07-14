@@ -44,4 +44,7 @@ type RepoRepository interface {
 
 	// FindAllMirrors finds all mirror repositories
 	FindAllMirrors(ctx context.Context) ([]*models.Repository, error)
+
+	// CheckCollaboratorAccess checks if a user is a collaborator on a repository
+	CheckCollaboratorAccess(ctx context.Context, repoID uuid.UUID, userID uuid.UUID) (bool, error)
 }

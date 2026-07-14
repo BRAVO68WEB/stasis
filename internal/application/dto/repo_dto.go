@@ -138,6 +138,11 @@ type TreeEntryResponse struct {
 	Mode string `json:"mode"`
 	Hash string `json:"hash"`
 	Size int64  `json:"size,omitempty"` // Only for blobs
+
+	LastCommitMessage string `json:"last_commit_message,omitempty"`
+	LastCommitHash    string `json:"last_commit_hash,omitempty"`
+	LastCommitAuthor  string `json:"last_commit_author,omitempty"`
+	LastCommitDate    string `json:"last_commit_date,omitempty"`
 }
 
 // TreeResponse represents a tree listing in API responses
@@ -192,12 +197,16 @@ func CommitListFromService(commits []service.Commit, ref string) CommitListRespo
 // TreeEntryFromService converts a service.TreeEntry to TreeEntryResponse DTO
 func TreeEntryFromService(e service.TreeEntry) TreeEntryResponse {
 	return TreeEntryResponse{
-		Name: e.Name,
-		Path: e.Path,
-		Type: e.Type,
-		Mode: e.Mode,
-		Hash: e.Hash,
-		Size: e.Size,
+		Name:              e.Name,
+		Path:              e.Path,
+		Type:              e.Type,
+		Mode:              e.Mode,
+		Hash:              e.Hash,
+		Size:              e.Size,
+		LastCommitMessage: e.LastCommitMessage,
+		LastCommitHash:    e.LastCommitHash,
+		LastCommitAuthor:  e.LastCommitAuthor,
+		LastCommitDate:    e.LastCommitDate,
 	}
 }
 
@@ -397,9 +406,13 @@ func buildSSHURL(host string, port int, owner, name string) string {
 
 // RepoStatsResponse represents repository statistics
 type RepoStatsResponse struct {
-	BranchCount int   `json:"branch_count"`
-	TagCount    int   `json:"tag_count"`
-	DiskUsage   int64 `json:"disk_usage"`
+	BranchCount       int                `json:"branch_count"`
+	TagCount          int                `json:"tag_count"`
+	DiskUsage         int64              `json:"disk_usage"`
+	ContributorsCount int                `json:"contributors_count"`
+	DefaultBranch     string             `json:"default_branch"`
+	LastCommitAt      string             `json:"last_commit_at,omitempty"`
+	LanguageUsagePerc map[string]float64 `json:"language_usage_perc,omitempty"`
 }
 
 // Validate validates the CreateRepoRequest

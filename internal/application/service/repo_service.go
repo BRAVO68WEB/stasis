@@ -560,6 +560,10 @@ func (s *RepoService) GetRepositoryPath(ownerUsername, repoName string) string {
 	return s.storage.GetRepoPath(ownerUsername, repoName)
 }
 
+func (s *RepoService) CheckCollaboratorAccess(ctx context.Context, repoID, userID uuid.UUID) (bool, error) {
+	return s.repoRepo.CheckCollaboratorAccess(ctx, repoID, userID)
+}
+
 // RepositoryExists checks if a repository exists
 func (s *RepoService) RepositoryExists(ctx context.Context, ownerUsername, repoName string) (bool, error) {
 	_, err := s.repoRepo.FindByOwnerUsernameAndName(ctx, ownerUsername, repoName)
@@ -708,10 +712,33 @@ func (s *RepoService) GetRepositoryStats(ctx context.Context, repo *models.Repos
 		diskUsage = 0
 	}
 
-	// Calculate total commit count
-	var totalCommits int
-	for _, branch := range branches {
-		totalCommits += branch.CommitCount
+	// Get commit count for HEAD
+	totalCommits, err := s.gitService.CountCommits(ctx, repo.GitPath, "HEAD")
+	if err != nil {
+		totalCommits = 0
+	}
+
+	// Get unique contributors count
+	contributors, err := s.gitService.GetContributors(ctx, repo.GitPath)
+	contributorsCount := 0
+	if err == nil {
+		contributorsCount = len(contributors)
+	}
+
+	// Get default branch
+	defaultBranch := "main"
+	for _, b := range branches {
+		if b.IsHead {
+			defaultBranch = b.Name
+			break
+		}
+	}
+
+	// Get last commit date from HEAD
+	lastCommitAt := ""
+	headCommits, err := s.gitService.GetCommits(ctx, repo.GitPath, "HEAD", 1, 0)
+	if err == nil && len(headCommits) > 0 {
+		lastCommitAt = headCommits[0].AuthorDate.Format(time.RFC3339)
 	}
 
 	// Language Usage Percentage
@@ -722,6 +749,9 @@ func (s *RepoService) GetRepositoryStats(ctx context.Context, repo *models.Repos
 		TagCount:          len(tags),
 		DiskUsage:         diskUsage,
 		TotalCommits:      totalCommits,
+		ContributorsCount: contributorsCount,
+		DefaultBranch:     defaultBranch,
+		LastCommitAt:      lastCommitAt,
 		LanguageUsagePerc: languageUsagePerc,
 	}, nil
 }
@@ -897,6 +927,9 @@ type RepositoryStats struct {
 	TagCount          int                `json:"tag_count"`
 	DiskUsage         int64              `json:"disk_usage"`
 	TotalCommits      int                `json:"total_commits"`
+	ContributorsCount int                `json:"contributors_count"`
+	DefaultBranch     string             `json:"default_branch"`
+	LastCommitAt      string             `json:"last_commit_at,omitempty"`
 	LanguageUsagePerc map[string]float64 `json:"language_usage_perc"`
 }
 
@@ -1034,6 +1067,22 @@ func (s *RepoService) GetDiff(ctx context.Context, repo *models.Repository, comm
 // GetCompareDiff returns the diff between two commits
 func (s *RepoService) GetCompareDiff(ctx context.Context, repo *models.Repository, from, to string) (*service.DiffResult, error) {
 	return s.gitService.GetCompareDiff(ctx, repo.GitPath, from, to)
+}
+
+func (s *RepoService) GetContributors(ctx context.Context, repo *models.Repository) ([]service.Contributor, error) {
+	return s.gitService.GetContributors(ctx, repo.GitPath)
+}
+
+func (s *RepoService) GetLastCommitForPath(ctx context.Context, repo *models.Repository, ref, filePath string) (*service.FileCommitInfo, error) {
+	return s.gitService.GetLastCommitForPath(ctx, repo.GitPath, ref, filePath)
+}
+
+func (s *RepoService) GetCommitActivity(ctx context.Context, repo *models.Repository, days int) (*service.ActivityResponse, error) {
+	return s.gitService.GetCommitActivity(ctx, repo.GitPath, days)
+}
+
+func (s *RepoService) GetCommitActivityInRange(ctx context.Context, repo *models.Repository, startDate, endDate time.Time) (*service.ActivityResponse, error) {
+	return s.gitService.GetCommitActivityInRange(ctx, repo.GitPath, startDate, endDate)
 }
 
 // ForkRepository creates a fork of a repository

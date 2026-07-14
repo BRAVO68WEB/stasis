@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -464,11 +465,12 @@ func (g *GitOperations) ListBranches(ctx context.Context, repoPath string) ([]se
 	}
 
 	err = refIter.ForEach(func(ref *plumbing.Reference) error {
+		commitCount, _ := g.CountCommits(ctx, repoPath, ref.Name().Short())
 		branches = append(branches, service.Branch{
 			Name:        ref.Name().Short(),
 			Hash:        ref.Hash().String(),
 			IsHead:      ref.Name().Short() == headName,
-			CommitCount: g.CountCommits(ctx, repoPath, ref.Name().Short()),
+			CommitCount: commitCount,
 		})
 		return nil
 	})
@@ -479,27 +481,45 @@ func (g *GitOperations) ListBranches(ctx context.Context, repoPath string) ([]se
 	return branches, nil
 }
 
-func (g *GitOperations) CountCommits(ctx context.Context, repoPath string, branchName string) int {
+func (g *GitOperations) CountCommits(ctx context.Context, repoPath string, ref string) (int, error) {
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
-		return 0
+		return 0, fmt.Errorf("failed to open repository: %w", err)
 	}
 
-	commits, err := repo.CommitObjects()
+	// Resolve the reference
+	var hash plumbing.Hash
+	if ref == "HEAD" {
+		head, err := repo.Head()
+		if err != nil {
+			return 0, fmt.Errorf("failed to resolve HEAD: %w", err)
+		}
+		hash = head.Hash()
+	} else {
+		refName := plumbing.NewBranchReferenceName(ref)
+		resolved, err := repo.Reference(refName, true)
+		if err != nil {
+			return 0, fmt.Errorf("failed to resolve ref %q: %w", ref, err)
+		}
+		hash = resolved.Hash()
+	}
+
+	commit, err := repo.CommitObject(hash)
 	if err != nil {
-		return 0
+		return 0, fmt.Errorf("failed to get commit: %w", err)
 	}
 
 	var commitCount int
-	err = commits.ForEach(func(commit *object.Commit) error {
+	iter := object.NewCommitPreorderIter(commit, nil, nil)
+	err = iter.ForEach(func(c *object.Commit) error {
 		commitCount++
 		return nil
 	})
 	if err != nil {
-		return 0
+		return 0, fmt.Errorf("failed to count commits: %w", err)
 	}
 
-	return int(commitCount)
+	return commitCount, nil
 }
 
 // GetBranch returns information about a specific branch
@@ -1091,7 +1111,6 @@ func (g *GitOperations) GetTree(ctx context.Context, repoPath, ref, path string)
 
 		var size int64 = 0
 		if entryType == "blob" {
-			// Get the blob to retrieve size
 			blob, err := repo.BlobObject(entry.Hash)
 			if err == nil {
 				size = blob.Size
@@ -1109,6 +1128,63 @@ func (g *GitOperations) GetTree(ctx context.Context, repoPath, ref, path string)
 	}
 
 	return entries, nil
+}
+
+func (g *GitOperations) GetLastCommitForPath(ctx context.Context, repoPath, ref, filePath string) (*service.FileCommitInfo, error) {
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	refHash, err := repo.ResolveRevision(plumbing.Revision(ref))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve ref: %w", err)
+	}
+
+	commit, err := repo.CommitObject(*refHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commit: %w", err)
+	}
+
+	fileIter, err := repo.Log(&git.LogOptions{
+		From:  commit.Hash,
+		Order: git.LogOrderCommitterTime,
+		PathFilter: func(s string) bool {
+			// Exact match for files
+			if s == filePath {
+				return true
+			}
+			// Prefix match for directories (filePath is "apps", s is "apps/file.go")
+			if filePath != "" && strings.HasPrefix(s, filePath+"/") {
+				return true
+			}
+			return false
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get log: %w", err)
+	}
+
+	var result *service.FileCommitInfo
+	err = fileIter.ForEach(func(c *object.Commit) error {
+		result = &service.FileCommitInfo{
+			Hash:        c.Hash.String()[:7],
+			Message:     c.Message,
+			Author:      c.Author.Name,
+			AuthorEmail: c.Author.Email,
+			Date:        c.Author.When.Format(time.RFC3339),
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate commits: %w", err)
+	}
+
+	if result == nil {
+		return nil, fmt.Errorf("no commit found for path")
+	}
+
+	return result, nil
 }
 
 // GetFileContent returns the content of a file at a given ref and path
@@ -1510,3 +1586,145 @@ func (g *GitOperations) parseFilePatchesFromDiff(content string, files []service
 
 // Verify interface compliance at compile time
 var _ service.GitService = (*GitOperations)(nil)
+
+func (g *GitOperations) GetContributors(ctx context.Context, repoPath string) ([]service.Contributor, error) {
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	commit, err := repo.CommitObject(head.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commit: %w", err)
+	}
+
+	// Group by email to get unique contributors
+	type contributorInfo struct {
+		Name  string
+		Email string
+		Count int
+	}
+	contributors := make(map[string]*contributorInfo)
+	iter := object.NewCommitPreorderIter(commit, nil, nil)
+	iter.ForEach(func(c *object.Commit) error {
+		email := c.Author.Email
+		if info, ok := contributors[email]; ok {
+			info.Count++
+		} else {
+			contributors[email] = &contributorInfo{
+				Name:  c.Author.Name,
+				Email: email,
+				Count: 1,
+			}
+		}
+		return nil
+	})
+
+	var result []service.Contributor
+	for _, info := range contributors {
+		result = append(result, service.Contributor{
+			Username:    info.Name,
+			Email:       info.Email,
+			CommitCount: info.Count,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].CommitCount > result[j].CommitCount
+	})
+
+	return result, nil
+}
+
+func (g *GitOperations) GetCommitActivity(ctx context.Context, repoPath string, days int) (*service.ActivityResponse, error) {
+	return g.GetCommitActivityInRange(ctx, repoPath, time.Now().AddDate(0, 0, -days), time.Now())
+}
+
+func (g *GitOperations) GetCommitActivityInRange(ctx context.Context, repoPath string, startDate, endDate time.Time) (*service.ActivityResponse, error) {
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	commit, err := repo.CommitObject(head.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commit: %w", err)
+	}
+
+	dayCounts := make(map[string]int)
+
+	iter := object.NewCommitPreorderIter(commit, nil, nil)
+	if err := iter.ForEach(func(c *object.Commit) error {
+		if c.Author.When.Before(startDate) {
+			return nil
+		}
+		if c.Author.When.After(endDate) {
+			return nil
+		}
+		day := c.Author.When.Format("2006-01-02")
+		dayCounts[day]++
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("failed to iterate commits: %w", err)
+	}
+
+	var dayActivities []service.DayActivity
+	total := 0
+	currentStreak := 0
+	longestStreak := 0
+	tempStreak := 0
+
+	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
+		dayStr := d.Format("2006-01-02")
+		count := dayCounts[dayStr]
+		total += count
+
+		level := 0
+		switch {
+		case count == 0:
+			level = 0
+		case count <= 2:
+			level = 1
+		case count <= 5:
+			level = 2
+		case count <= 10:
+			level = 3
+		default:
+			level = 4
+		}
+
+		dayActivities = append(dayActivities, service.DayActivity{
+			Date:  dayStr,
+			Count: count,
+			Level: level,
+		})
+
+		if count > 0 {
+			tempStreak++
+			if tempStreak > longestStreak {
+				longestStreak = tempStreak
+			}
+		} else {
+			tempStreak = 0
+		}
+	}
+
+	currentStreak = tempStreak
+
+	return &service.ActivityResponse{
+		Days:    dayActivities,
+		Total:   total,
+		Streak:  currentStreak,
+		Longest: longestStreak,
+	}, nil
+}

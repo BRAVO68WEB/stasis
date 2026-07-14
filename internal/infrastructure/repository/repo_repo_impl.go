@@ -260,3 +260,14 @@ func (r *RepoRepoImpl) FindAllMirrors(ctx context.Context) ([]*models.Repository
 	}
 	return repos, nil
 }
+
+func (r *RepoRepoImpl) CheckCollaboratorAccess(ctx context.Context, repoID uuid.UUID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.WithContext(ctx).
+		Raw("SELECT EXISTS(SELECT 1 FROM repo_members WHERE repo_id = ? AND user_id = ?)", repoID, userID).
+		Scan(&exists).Error
+	if err != nil {
+		return false, apperror.DatabaseError("check_collaborator", err)
+	}
+	return exists, nil
+}

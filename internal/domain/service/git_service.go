@@ -52,6 +52,12 @@ type TreeEntry struct {
 	Mode string // File mode (e.g., "100644" for regular file, "040000" for directory)
 	Hash string // Object hash
 	Size int64  // File size in bytes (only for blobs)
+
+	// Last commit that touched this entry
+	LastCommitMessage string
+	LastCommitHash    string
+	LastCommitAuthor  string
+	LastCommitDate    string
 }
 
 // FileContent represents the content of a file in a Git repository
@@ -93,6 +99,36 @@ type DiffFile struct {
 	Additions int
 	Deletions int
 	Patch     string
+}
+
+// Contributor represents a repository contributor
+type Contributor struct {
+	Username    string `json:"username"`
+	Email       string `json:"email"`
+	CommitCount int    `json:"commit_count"`
+}
+
+type FileCommitInfo struct {
+	Hash        string `json:"hash"`
+	Message     string `json:"message"`
+	Author      string `json:"author"`
+	AuthorEmail string `json:"author_email"`
+	Date        string `json:"date"`
+}
+
+// ActivityResponse represents commit activity data for a repository
+type ActivityResponse struct {
+	Days    []DayActivity `json:"days"`
+	Total   int           `json:"total"`
+	Streak  int           `json:"current_streak"`
+	Longest int           `json:"longest_streak"`
+}
+
+// DayActivity represents commit activity for a single day
+type DayActivity struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+	Level int    `json:"level"` // 0-4 for heatmap coloring
 }
 
 // GitService defines the interface for Git repository operations
@@ -141,6 +177,9 @@ type GitService interface {
 
 	// ListBranches returns all branches in the repository
 	ListBranches(ctx context.Context, repoPath string) ([]Branch, error)
+
+	// CountCommits returns the number of commits reachable from the given ref
+	CountCommits(ctx context.Context, repoPath string, ref string) (int, error)
 
 	// GetBranch returns information about a specific branch
 	GetBranch(ctx context.Context, repoPath, branchName string) (*Branch, error)
@@ -217,4 +256,12 @@ type GitService interface {
 
 	// Compare diff between two commits
 	GetCompareDiff(ctx context.Context, repoPath, from, to string) (*DiffResult, error)
+
+	// GetContributors returns a list of contributors sorted by commit count
+	GetContributors(ctx context.Context, repoPath string) ([]Contributor, error)
+
+	GetLastCommitForPath(ctx context.Context, repoPath, ref, filePath string) (*FileCommitInfo, error)
+
+	GetCommitActivity(ctx context.Context, repoPath string, days int) (*ActivityResponse, error)
+	GetCommitActivityInRange(ctx context.Context, repoPath string, startDate, endDate time.Time) (*ActivityResponse, error)
 }
