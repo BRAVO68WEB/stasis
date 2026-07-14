@@ -23,9 +23,10 @@ type Config struct {
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
-	Mode string `mapstructure:"mode"` // debug, release, test
+	Host      string `mapstructure:"host"`
+	Port      int    `mapstructure:"port"`
+	Mode      string `mapstructure:"mode"`       // debug, release, test
+	RateLimit int    `mapstructure:"rate_limit"` // max requests per minute per IP on git protocol endpoints (0 = disabled)
 }
 
 // DatabaseConfig holds PostgreSQL database configuration
@@ -271,6 +272,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", 8080)
 	v.SetDefault("server.mode", "release")
+	v.SetDefault("server.rate_limit", 100)
 
 	// Database defaults
 	v.SetDefault("database.host", "localhost")
@@ -298,7 +300,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("oidc.redirect_url", "")
 	v.SetDefault("oidc.frontend_url", "http://localhost:3000")
 	v.SetDefault("oidc.scopes", []string{"openid", "profile", "email"})
-	v.SetDefault("oidc.jwt_secret", "change-this-secret-in-production")
+	v.SetDefault("oidc.jwt_secret", "")
 
 	// Logging defaults
 	v.SetDefault("logging.level", "info")
@@ -419,8 +421,8 @@ func (c *Config) Validate() error {
 		if c.OIDC.RedirectURL == "" {
 			return fmt.Errorf("OIDC redirect URL is required when OIDC is enabled")
 		}
-		if c.OIDC.JWTSecret == "" {
-			return fmt.Errorf("OIDC JWT secret is required when OIDC is enabled")
+		if c.OIDC.JWTSecret == "" || c.OIDC.JWTSecret == "change-this-secret-in-production" {
+			return fmt.Errorf("OIDC JWT secret must be set when OIDC is enabled")
 		}
 	}
 

@@ -136,8 +136,6 @@ func (m *AuthMiddleware) extractAndValidateUser(c *gin.Context) *models.User {
 
 	authHeader := c.GetHeader("Authorization")
 
-	println("authHeader", authHeader)
-
 	// Try Bearer token first (Authorization header)
 	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
