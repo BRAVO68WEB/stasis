@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"strings"
 	"time"
 )
 
@@ -93,11 +91,9 @@ func (c *CIConfig) GetAPIToken() string {
 	return ""
 }
 
+// GetGitServerURLWithAPIToken returns the Git server URL for CI runner use.
+// Token should be passed via Authorization: Bearer header, not embedded in URL
+// to avoid leaking credentials in logs, browser history, and proxy logs.
 func (c *CIConfig) GetGitServerURLWithAPIToken() string {
-	baseURL := c.GetGitServerURL()
-	parts := strings.Split(baseURL, "://")
-	if len(parts) != 2 {
-		return baseURL
-	}
-	return fmt.Sprintf("%s://oauth:%s@%s", parts[0], c.GetAPIToken(), parts[1])
+	return c.GetGitServerURL()
 }

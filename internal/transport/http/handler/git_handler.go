@@ -339,7 +339,13 @@ func (h *GitHandler) checkRepoAccess(c *gin.Context, user *models.User, repo *mo
 		// Read access to public repos
 		hasAccess = true
 	}
-	// TODO: Check collaborator permissions
+
+	if !hasAccess {
+		isMember, err := h.repoService.CheckCollaboratorAccess(c.Request.Context(), repo.ID, user.ID)
+		if err == nil && isMember {
+			hasAccess = true
+		}
+	}
 
 	if !hasAccess {
 		// Return 404 for private repos to avoid leaking existence

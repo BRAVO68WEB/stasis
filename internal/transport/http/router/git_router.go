@@ -129,6 +129,9 @@ func (r *Router) gitRouter() {
 	// Create a group for git operations
 	// Pattern: /:owner/:repo.git/... (repos accessed with .git suffix for git operations)
 	gitGroup := r.server.Group("/:owner/:repo")
+	gitGroup.Use(middleware.RateLimitMiddleware(middleware.RateLimitConfig{
+		RequestsPerMinute: r.server.Config.Server.RateLimit,
+	}))
 	gitGroup.Use(authMiddleware.Authenticate())
 	{
 		// Git info/refs endpoint - used for capability advertisement

@@ -40,6 +40,9 @@ func (r *Router) RegisterRoutes() {
 	// Apply CORS middleware
 	r.server.Use(middleware.CORSMiddleware(allowedOrigins))
 
+	// Apply security headers middleware
+	r.server.Use(middleware.SecurityHeaders())
+
 	r.docsRouter()
 
 	r.healthRouter()
