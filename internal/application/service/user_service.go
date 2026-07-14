@@ -41,9 +41,17 @@ type CreateUserRequest struct {
 
 // UpdateUserRequest represents a request to update a user
 type UpdateUserRequest struct {
-	Email    *string
-	Username *string
-	IsAdmin  *bool
+	Email        *string
+	Username     *string
+	IsAdmin      *bool
+	DisplayName  *string
+	Bio          *string
+	Company      *string
+	Location     *string
+	Website      *string
+	AvatarURL    *string
+	LinkedEmails *[]string
+	SocialLinks  *[]models.SocialLink
 }
 
 // CreateUser creates a new user (typically from OIDC flow)
@@ -162,6 +170,35 @@ func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*models
 	return s.userRepo.FindByEmail(ctx, strings.ToLower(email))
 }
 
+// GetUserByLinkedEmail retrieves a user by their linked email or primary email
+func (s *UserService) GetUserByLinkedEmail(ctx context.Context, email string) (*models.User, error) {
+	s.log.Debug("Getting user by linked email",
+		logger.String("email", email),
+	)
+
+	// First check primary emails via the standard lookup
+	if user, err := s.userRepo.FindByEmail(ctx, strings.ToLower(email)); err == nil {
+		return user, nil
+	}
+
+	// Search through linked emails
+	users, err := s.userRepo.List(ctx, 10000, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users: %w", err)
+	}
+
+	lowerEmail := strings.ToLower(email)
+	for _, user := range users {
+		for _, linkedEmail := range user.GetLinkedEmails() {
+			if strings.ToLower(linkedEmail) == lowerEmail {
+				return user, nil
+			}
+		}
+	}
+
+	return nil, apperrors.NotFound("no user found with email", nil)
+}
+
 // GetUserByOIDCSubject retrieves a user by OIDC subject and issuer
 func (s *UserService) GetUserByOIDCSubject(ctx context.Context, subject, issuer string) (*models.User, error) {
 	s.log.Debug("Getting user by OIDC subject",
@@ -259,6 +296,35 @@ func (s *UserService) UpdateUser(ctx context.Context, id uuid.UUID, req UpdateUs
 			logger.String("user_id", id.String()),
 			logger.String("new_username", *req.Username),
 		)
+	}
+
+	if req.DisplayName != nil {
+		user.DisplayName = *req.DisplayName
+	}
+	if req.Bio != nil {
+		user.Bio = *req.Bio
+	}
+	if req.Company != nil {
+		user.Company = *req.Company
+	}
+	if req.Location != nil {
+		user.Location = *req.Location
+	}
+	if req.Website != nil {
+		user.Website = *req.Website
+	}
+	if req.AvatarURL != nil {
+		user.AvatarURL = *req.AvatarURL
+	}
+	if req.LinkedEmails != nil {
+		if err := user.SetLinkedEmails(*req.LinkedEmails); err != nil {
+			return nil, fmt.Errorf("failed to set linked emails: %w", err)
+		}
+	}
+	if req.SocialLinks != nil {
+		if err := user.SetSocialLinks(*req.SocialLinks); err != nil {
+			return nil, fmt.Errorf("failed to set social links: %w", err)
+		}
 	}
 
 	// Save updates

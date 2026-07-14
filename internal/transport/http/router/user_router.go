@@ -40,10 +40,21 @@ func (r *Router) userRouter() {
 		},
 	})
 
-	// Register user routes
+	// Public profile endpoint
+	v1.GET("/users/:username", userHandler.GetUserProfile)
+
+	// Public endpoint to look up user by linked email
+	v1.GET("/users/by-email", userHandler.GetUserByEmail)
+
+	// Register authenticated user routes
 	userGroup := v1.Group("/users")
 	{
 		userGroup.Use(authMiddleware.RequireAuth())
 		userGroup.PUT("/username", userHandler.UpdateCurrentUsername)
+		userGroup.PUT("/profile", userHandler.UpdateProfile)
+		userGroup.PUT("/linked-emails", userHandler.UpdateLinkedEmails)
+		userGroup.GET("/linked-emails", userHandler.GetLinkedEmails)
+		userGroup.PUT("/social-links", userHandler.UpdateSocialLinks)
+		userGroup.GET("/social-links", userHandler.GetSocialLinks)
 	}
 }

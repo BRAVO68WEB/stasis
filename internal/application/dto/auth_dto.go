@@ -107,13 +107,33 @@ type ListSSHKeysResponse struct {
 
 // UpdateProfileRequest represents a request to update user profile
 type UpdateProfileRequest struct {
-	Email *string `json:"email,omitempty" binding:"omitempty,email"`
+	Email       *string `json:"email,omitempty" binding:"omitempty,email"`
+	DisplayName *string `json:"display_name,omitempty"`
+	Bio         *string `json:"bio,omitempty"`
+	Company     *string `json:"company,omitempty"`
+	Location    *string `json:"location,omitempty"`
+	Website     *string `json:"website,omitempty"`
+	AvatarURL   *string `json:"avatar_url,omitempty"`
 }
 
 // UpdateProfileResponse represents a response after updating profile
 type UpdateProfileResponse struct {
 	User    UserInfo `json:"user"`
 	Message string   `json:"message"`
+}
+
+// UserProfileResponse represents a public user profile
+type UserProfileResponse struct {
+	ID           uuid.UUID           `json:"id"`
+	Username     string              `json:"username"`
+	DisplayName  string              `json:"display_name,omitempty"`
+	Bio          string              `json:"bio,omitempty"`
+	Company      string              `json:"company,omitempty"`
+	Location     string              `json:"location,omitempty"`
+	Website      string              `json:"website,omitempty"`
+	AvatarURL    string              `json:"avatar_url,omitempty"`
+	SocialLinks  []SocialLinkResponse `json:"social_links,omitempty"`
+	CreatedAt    time.Time           `json:"created_at"`
 }
 
 // AuthenticatedUser represents the authenticated user context
@@ -148,4 +168,36 @@ type ValidateTokenResponse struct {
 // UpdateUserRequest represents a request to update user information
 type UpdateUserRequest struct {
 	Username *string `json:"username,omitempty" binding:"omitempty,min=1,max=255"`
+}
+
+// UpdateLinkedEmailsRequest represents a request to update linked emails
+type UpdateLinkedEmailsRequest struct {
+	Emails []string `json:"emails" binding:"required"`
+}
+
+// LinkedEmailsResponse represents the response containing linked emails
+type LinkedEmailsResponse struct {
+	Emails []string `json:"emails"`
+}
+
+// SocialLinkRequest represents a social link in requests
+type SocialLinkRequest struct {
+	URL  string `json:"url" binding:"required"`
+	Name string `json:"name" binding:"required,max=100"`
+}
+
+// UpdateSocialLinksRequest represents a request to update social links
+type UpdateSocialLinksRequest struct {
+	Links []SocialLinkRequest `json:"links" binding:"required,max=4"`
+}
+
+// SocialLinkResponse represents a social link in responses
+type SocialLinkResponse struct {
+	URL  string `json:"url"`
+	Name string `json:"name"`
+}
+
+// SocialLinksResponse represents the response containing social links
+type SocialLinksResponse struct {
+	Links []SocialLinkResponse `json:"links"`
 }
