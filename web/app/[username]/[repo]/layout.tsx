@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { getRepository, listBranches, listTags } from "@/lib/api";
+import { getRepository, listBranches, listTags, getTree } from "@/lib/api";
 import BranchSelector from "@/components/BranchSelector";
 import CloneCard from "@/components/CloneCard";
+import RepoNav from "@/components/RepoNav";
+import FileSearch from "@/components/FileSearch";
 import { env } from "@/lib/env";
 
 export default async function RepoLayout({
@@ -22,6 +24,7 @@ export default async function RepoLayout({
   let branches: Array<{ name: string; hash: string; is_head: boolean }> = [];
   let branchCount = 0;
   let tagCount = 0;
+  let treeEntries: Array<{ name: string; path: string; type: string }> = [];
 
   try {
     const repoResponse = await getRepository(username, repo);
@@ -46,6 +49,20 @@ export default async function RepoLayout({
     tagCount = tagResponse.total;
   } catch {
     tagCount = 0;
+  }
+
+  const defaultBranch = branches.find((b) => b.is_head)?.name || branches[0]?.name;
+  if (defaultBranch) {
+    try {
+      const treeResponse = await getTree(username, repo, defaultBranch);
+      treeEntries = treeResponse.entries.map((e) => ({
+        name: e.name,
+        path: e.path,
+        type: e.type,
+      }));
+    } catch {
+      treeEntries = [];
+    }
   }
 
   const visibility = repoData.is_private ? "private" : "public";
@@ -77,54 +94,12 @@ export default async function RepoLayout({
       </div>
 
       <div className="border-b border-base mb-6 flex justify-between items-center">
-        <nav className="flex gap-6 -mb-px">
-          <Link
-            href={`/${username}/${repo}`}
-            className="border-b-2 border-transparent hover:border-base font-medium text-base pb-3 px-1 hover:text-accent"
-          >
-            Code
-          </Link>
-          <Link
-            href={`/${username}/${repo}/commits`}
-            className="border-b-2 border-transparent hover:border-base text-muted pb-3 px-1 hover:text-accent"
-          >
-            Commits
-          </Link>
-          <Link
-            href={`/${username}/${repo}/branches`}
-            className="border-b-2 border-transparent hover:border-base text-muted pb-3 px-1 hover:text-accent"
-          >
-            Branches
-            {branchCount > 0 && (
-              <span className="ml-1 text-xs bg-base px-1.5 py-0.5 rounded-full">
-                {branchCount}
-              </span>
-            )}
-          </Link>
-          <Link
-            href={`/${username}/${repo}/tags`}
-            className="border-b-2 border-transparent hover:border-base text-muted pb-3 px-1 hover:text-accent"
-          >
-            Tags
-            {tagCount > 0 && (
-              <span className="ml-1 text-xs bg-base px-1.5 py-0.5 rounded-full">
-                {tagCount}
-              </span>
-            )}
-          </Link>
-          <Link
-            href={`/${username}/${repo}/ci`}
-            className="border-b-2 border-transparent hover:border-base text-muted pb-3 px-1 hover:text-accent"
-          >
-            CI
-          </Link>
-          <Link
-            href={`/${username}/${repo}/settings`}
-            className="border-b-2 border-transparent hover:border-base text-muted pb-3 px-1 hover:text-accent"
-          >
-            Settings
-          </Link>
-        </nav>
+        <RepoNav
+          username={username}
+          repo={repo}
+          branchCount={branchCount}
+          tagCount={tagCount}
+        />
         <div className="flex items-center gap-2 mb-2">
           <BranchSelector
             branches={branches.map((b) => ({
@@ -137,6 +112,13 @@ export default async function RepoLayout({
       </div>
 
       {children}
+
+      <FileSearch
+        owner={username}
+        repo={repo}
+        currentRef={defaultBranch || "main"}
+        files={treeEntries}
+      />
     </div>
   );
 }

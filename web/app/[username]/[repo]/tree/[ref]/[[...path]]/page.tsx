@@ -1,5 +1,6 @@
 import { getTree, getBlob } from "@/lib/api";
 import { RepoFileTree } from "@/components/RepoFileTree";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import Link from "next/link";
 
 export default async function TreePage({
@@ -14,21 +15,15 @@ export default async function TreePage({
 }) {
   const { username, repo, ref: refParam, path: pathSegments } = await params;
 
-  const fullPath = [
-    decodeURIComponent(refParam),
-    ...(pathSegments || []).map((p) => decodeURIComponent(p)),
-  ].join("/");
+  const ref = decodeURIComponent(refParam);
+  const path = (pathSegments || []).map((p) => decodeURIComponent(p)).join("/");
 
-  let ref = "";
-  let path = "";
   let entries: Awaited<ReturnType<typeof getTree>>["entries"] = [];
   let failed = false;
   let readmeContent = "";
   let readmePath = "";
   try {
-    const data = await getTree(username, repo, fullPath);
-    ref = data.ref;
-    path = data.path;
+    const data = await getTree(username, repo, ref, path);
     entries = data.entries;
   } catch {
     failed = true;
@@ -60,7 +55,7 @@ export default async function TreePage({
   for (const name of tryNames) {
     const candidate = path ? `${path}/${name}` : name;
     try {
-      const data = await getBlob(username, repo, `${ref}/${candidate}`);
+      const data = await getBlob(username, repo, ref, candidate);
       readmeContent = data.content;
       readmePath = candidate;
       break;
@@ -95,8 +90,8 @@ export default async function TreePage({
               </Link>
             </div>
           </div>
-          <div className="p-4 whitespace-pre-wrap font-mono text-base">
-            {readmeContent}
+          <div className="p-4">
+            <MarkdownRenderer content={readmeContent} />
           </div>
         </div>
       )}
