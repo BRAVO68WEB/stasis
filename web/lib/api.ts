@@ -1,5 +1,7 @@
 import {
   UserInfo,
+  UserProfile,
+  SocialLink,
   UpdateUserResponse,
   OIDCConfigResponse,
   OIDCCallbackResponse,
@@ -39,6 +41,7 @@ import {
   CreateTokenResponse,
   ListTokensResponse,
   CIArtifact,
+  ActivityResponse,
 } from "./types";
 import { env } from "./env";
 
@@ -265,6 +268,13 @@ export async function getCurrentUser(): Promise<UserInfo> {
 }
 
 /**
+ * Get a user's public profile by username
+ */
+export async function getUserProfile(username: string): Promise<UserProfile> {
+  return apiRequest(`/v1/users/${encodeURIComponent(username)}`);
+}
+
+/**
  * Update current user's username
  */
 export async function updateUsername(
@@ -273,6 +283,23 @@ export async function updateUsername(
   return apiRequest<UpdateUserResponse>("/v1/users/username", {
     method: "PUT",
     body: JSON.stringify({ username }),
+  });
+}
+
+/**
+ * Update current user's profile fields
+ */
+export async function updateProfile(data: {
+  display_name?: string;
+  bio?: string;
+  company?: string;
+  location?: string;
+  website?: string;
+  avatar_url?: string;
+}): Promise<UserProfile> {
+  return apiRequest<UserProfile>("/v1/users/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 }
 
@@ -459,9 +486,41 @@ export async function deleteRepository(
 export async function getRepositoryStats(
   owner: string,
   repo: string,
+  ref?: string,
 ): Promise<RepoStats> {
+  const params = new URLSearchParams();
+  if (ref) params.set("ref", ref);
+  const query = params.toString() ? `?${params}` : "";
   return apiRequest(
-    `/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stats`,
+    `/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stats${query}`,
+  );
+}
+
+export async function getLicense(
+  owner: string,
+  repo: string,
+): Promise<{ license: string; filename: string }> {
+  return apiRequest(
+    `/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/license`,
+  );
+}
+
+export async function getContributors(
+  owner: string,
+  repo: string,
+): Promise<ContributorsResponse> {
+  return apiRequest(
+    `/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contributors`,
+  );
+}
+
+export async function getRepoActivity(
+  owner: string,
+  repo: string,
+  days: number = 365,
+): Promise<ActivityResponse> {
+  return apiRequest(
+    `/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/activity?days=${days}`,
   );
 }
 
@@ -640,19 +699,23 @@ export async function getRepo(owner: string, name: string): Promise<Repo> {
 export async function getTree(
   owner: string,
   name: string,
-  urlPath: string,
+  ref: string,
+  path: string = "",
 ): Promise<{ ref: string; path: string; entries: FileEntry[] }> {
-  // Parse urlPath to extract ref and path
-  // urlPath format: "ref/path/to/dir" or just "ref"
-  const parts = urlPath.split("/");
-  const ref = parts[0] || "HEAD";
-  const path = parts.slice(1).join("/");
-
   const headers = await getLegacyAuthHeaders();
 
-  let url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/tree/${encodeURIComponent(ref)}`;
-  if (path) {
-    url += `/${path.split("/").map(encodeURIComponent).join("/")}`;
+  let url: string;
+  if (ref.includes("/")) {
+    // Branch names with / must use query parameter because Gin decodes %2F
+    url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/tree/_?ref=${encodeURIComponent(ref)}`;
+    if (path) {
+      url += `&path=${encodeURIComponent(path)}`;
+    }
+  } else {
+    url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/tree/${encodeURIComponent(ref)}`;
+    if (path) {
+      url += `/${path.split("/").map(encodeURIComponent).join("/")}`;
+    }
   }
 
   const res = await fetch(url, {
@@ -673,7 +736,8 @@ export async function getTree(
 export async function getBlob(
   owner: string,
   name: string,
-  urlPath: string,
+  ref: string,
+  path: string,
 ): Promise<{
   ref: string;
   path: string;
@@ -681,15 +745,14 @@ export async function getBlob(
   is_binary?: boolean;
   encoding?: string;
 }> {
-  // Parse urlPath to extract ref and path
-  // urlPath format: "ref/path/to/file"
-  const parts = urlPath.split("/");
-  const ref = parts[0] || "HEAD";
-  const path = parts.slice(1).join("/");
-
   const headers = await getLegacyAuthHeaders();
 
-  const url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/blob/${encodeURIComponent(ref)}/${path.split("/").map(encodeURIComponent).join("/")}`;
+  let url: string;
+  if (ref.includes("/")) {
+    url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/blob/_/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(ref)}`;
+  } else {
+    url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/blob/${encodeURIComponent(ref)}/${path.split("/").map(encodeURIComponent).join("/")}`;
+  }
 
   const res = await fetch(url, {
     cache: "no-store",
@@ -711,16 +774,11 @@ export async function getBlob(
 export async function getCommits(
   owner: string,
   name: string,
-  urlPath: string,
+  ref: string,
+  path: string = "",
   page: number = 1,
   perPage: number = 30,
 ): Promise<{ ref: string; path: string; commits: Commit[] }> {
-  // Parse urlPath to extract ref (and optionally path for file history)
-  // urlPath format: "ref" or "ref/path/to/file"
-  const parts = urlPath.split("/");
-  const ref = parts[0] || "HEAD";
-  const path = parts.slice(1).join("/");
-
   const headers = await getLegacyAuthHeaders();
 
   const params = new URLSearchParams({
@@ -808,17 +866,17 @@ export async function getCompareDiff(
 export async function getBlame(
   owner: string,
   name: string,
-  urlPath: string,
+  ref: string,
+  path: string,
 ): Promise<{ ref: string; path: string; blame: BlameLine[] }> {
-  // Parse urlPath to extract ref and path
-  // urlPath format: "ref/path/to/file"
-  const parts = urlPath.split("/");
-  const ref = parts[0] || "HEAD";
-  const path = parts.slice(1).join("/");
-
   const headers = await getLegacyAuthHeaders();
 
-  const url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/blame/${encodeURIComponent(ref)}/${path.split("/").map(encodeURIComponent).join("/")}`;
+  let url: string;
+  if (ref.includes("/")) {
+    url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/blame/_/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(ref)}`;
+  } else {
+    url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/blame/${encodeURIComponent(ref)}/${path.split("/").map(encodeURIComponent).join("/")}`;
+  }
 
   const res = await fetch(url, {
     cache: "no-store",
@@ -835,6 +893,29 @@ export async function getBlame(
   };
 }
 
+export async function getFileCommit(
+  owner: string,
+  repo: string,
+  ref: string,
+  path: string,
+): Promise<{ hash: string; message: string; author: string; date: string }> {
+  let url: string;
+  if (ref.includes("/")) {
+    url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/file-commit/_/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(ref)}`;
+  } else {
+    url = `${getApiUrl()}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/file-commit/${encodeURIComponent(ref)}/${path.split("/").map(encodeURIComponent).join("/")}`;
+  }
+
+  const headers = await getLegacyAuthHeaders();
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers,
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch file commit");
+  return res.json();
+}
+
 // ============================================================================
 // CI/CD API
 // ============================================================================
@@ -847,6 +928,8 @@ import {
   TriggerCIJobResponse,
   CIJobEvent,
   CIJobLog,
+  ContributorsResponse,
+  LinkedEmailsResponse,
 } from "./types";
 
 /**
@@ -940,13 +1023,13 @@ export async function retryCIJob(
 ): Promise<{
   message: string;
   new_job_id: string;
-  new_run_id: string;
+  run_id: string;
   original_job_id: string;
 }> {
   return apiRequest<{
     message: string;
     new_job_id: string;
-    new_run_id: string;
+    run_id: string;
     original_job_id: string;
   }>(`/v1/repos/${owner}/${repo}/ci/jobs/${jobId}/retry`, { method: "POST" });
 }
@@ -988,7 +1071,11 @@ export function subscribeToCIJobStream(
   onError?: (error: Event) => void,
 ): EventSource {
   const url = `${getApiUrl()}/v1/repos/${owner}/${repo}/ci/jobs/${jobId}/stream`;
-  const eventSource = new EventSource(url, { withCredentials: true });
+  const token = getToken();
+  const urlWithAuth = token
+    ? `${url}?access_token=${encodeURIComponent(token)}`
+    : url;
+  const eventSource = new EventSource(urlWithAuth, { withCredentials: true });
 
   // Handle connection established
   eventSource.addEventListener("connected", (e: MessageEvent) => {
@@ -1050,27 +1137,65 @@ export function subscribeToCIJobStream(
   return eventSource;
 }
 
+// ============================================================================
+// Linked Emails API
+// ============================================================================
+
+export async function getLinkedEmails(): Promise<LinkedEmailsResponse> {
+  return apiRequest("/v1/users/linked-emails");
+}
+
+export async function updateLinkedEmails(
+  emails: string[],
+): Promise<LinkedEmailsResponse> {
+  return apiRequest("/v1/users/linked-emails", {
+    method: "PUT",
+    body: JSON.stringify({ emails }),
+  });
+}
+
+// ============================================================================
+// Social Links API
+// ============================================================================
+
+interface SocialLinksResponse {
+  links: SocialLink[];
+}
+
+export async function getSocialLinks(): Promise<SocialLinksResponse> {
+  return apiRequest("/v1/users/social-links");
+}
+
+export async function updateSocialLinks(
+  links: SocialLink[],
+): Promise<SocialLinksResponse> {
+  return apiRequest("/v1/users/social-links", {
+    method: "PUT",
+    body: JSON.stringify({ links }),
+  });
+}
+
 /**
  * Get status badge color for CI job status
  */
 export function getCIStatusColor(status: string): string {
   switch (status) {
     case "success":
-      return "text-green-500";
+      return "text-[var(--color-success)]";
     case "failed":
     case "error":
-      return "text-red-500";
+      return "text-[var(--color-error)]";
     case "running":
-      return "text-blue-500";
+      return "text-[var(--color-info)]";
     case "pending":
     case "queued":
-      return "text-yellow-500";
+      return "text-[var(--color-warning)]";
     case "cancelled":
-      return "text-gray-500";
+      return "text-[var(--color-text-muted)]";
     case "timed_out":
-      return "text-orange-500";
+      return "text-[var(--color-warning)]";
     default:
-      return "text-muted";
+      return "text-[var(--color-text-muted)]";
   }
 }
 
@@ -1080,21 +1205,21 @@ export function getCIStatusColor(status: string): string {
 export function getCIStatusBgColor(status: string): string {
   switch (status) {
     case "success":
-      return "bg-green-500/10 border-green-500/30";
+      return "bg-[var(--color-success-muted)] border-[var(--color-success)]";
     case "failed":
     case "error":
-      return "bg-red-500/10 border-red-500/30";
+      return "bg-[var(--color-error-muted)] border-[var(--color-error)]";
     case "running":
-      return "bg-blue-500/10 border-blue-500/30";
+      return "bg-[var(--color-info-muted)] border-[var(--color-info)]";
     case "pending":
     case "queued":
-      return "bg-yellow-500/10 border-yellow-500/30";
+      return "bg-[var(--color-warning-muted)] border-[var(--color-warning)]";
     case "cancelled":
-      return "bg-gray-500/10 border-gray-500/30";
+      return "bg-[var(--color-text-muted)]/10 border-[var(--color-text-muted)]";
     case "timed_out":
-      return "bg-orange-500/10 border-orange-500/30";
+      return "bg-[var(--color-warning-muted)] border-[var(--color-warning)]";
     default:
-      return "bg-base border-base";
+      return "bg-[var(--color-bg-base)] border-[var(--color-border)]";
   }
 }
 

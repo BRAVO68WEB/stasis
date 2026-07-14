@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { isAuthenticated } from "@/lib/api";
 
 const settingsNav = [
   {
@@ -26,13 +28,35 @@ export default function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const pathname = usePathname();
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push("/auth/login");
+    } else {
+      setAuthorized(true);
+    }
+  }, [router]);
+
+  if (!authorized) {
+    return (
+      <div className="container mx-auto py-10 px-4">
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-accent)]"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-10 px-4">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-base">Settings</h1>
-        <p className="mt-2 text-muted">
+        <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">
+          Settings
+        </h1>
+        <p className="mt-2 text-[var(--color-text-muted)]">
           Manage your account settings and preferences
         </p>
       </div>
@@ -47,10 +71,10 @@ export default function SettingsLayout({
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`block px-4 py-2 rounded-md text-sm transition-colors ${
+                    className={`block px-4 py-2 rounded-[var(--radius-md)] text-sm transition-colors ${
                       isActive
-                        ? "bg-panel border border-base text-accent font-medium"
-                        : "text-muted hover:text-base hover:bg-panel"
+                        ? "bg-[var(--color-bg-panel)] border border-[var(--color-border)] text-[var(--color-accent)] font-medium"
+                        : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-panel)]"
                     }`}
                   >
                     {item.name}

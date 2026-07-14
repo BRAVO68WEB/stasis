@@ -9,6 +9,9 @@ import {
   isAuthenticated,
 } from "@/lib/api";
 import { SSHKeyInfo } from "@/lib/types";
+import Button from "@/components/ui/Button";
+import Alert from "@/components/ui/Alert";
+import Modal from "@/components/ui/Modal";
 
 export default function SSHKeysPage() {
   const router = useRouter();
@@ -126,7 +129,9 @@ export default function SSHKeysPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-muted">Loading SSH keys...</div>
+        <div className="text-[var(--color-text-muted)]">
+          Loading SSH keys...
+        </div>
       </div>
     );
   }
@@ -135,51 +140,44 @@ export default function SSHKeysPage() {
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-base">SSH Keys</h2>
-          <p className="text-sm text-muted mt-1">
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+            SSH Keys
+          </h2>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">
             SSH keys allow you to establish a secure connection to your Git
             repositories without entering your password.
           </p>
         </div>
         {!showAddForm && (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-          >
+          <Button variant="primary" onClick={() => setShowAddForm(true)}>
             Add SSH Key
-          </button>
+          </Button>
         )}
       </div>
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-md text-sm">
-          {error}
-        </div>
-      )}
+      {error && <Alert type="error">{error}</Alert>}
 
-      {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-md text-sm">
-          {success}
-        </div>
-      )}
+      {success && <Alert type="success">{success}</Alert>}
 
       {/* Add SSH Key Form */}
       {showAddForm && (
         <form
           onSubmit={handleAddKey}
-          className="border border-base rounded-md bg-panel"
+          className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-bg-panel)]"
         >
-          <div className="px-4 py-3 border-b border-base">
-            <h3 className="font-medium text-base">Add new SSH Key</h3>
+          <div className="px-4 py-3 border-b border-[var(--color-border)]">
+            <h3 className="font-medium text-[var(--color-text-primary)]">
+              Add new SSH Key
+            </h3>
           </div>
 
           <div className="p-4 space-y-4">
             <div>
               <label
                 htmlFor="title"
-                className="block text-sm font-medium text-base"
+                className="block text-sm font-medium text-[var(--color-text-primary)]"
               >
-                Title <span className="text-red-500">*</span>
+                Title <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 id="title"
@@ -190,22 +188,23 @@ export default function SSHKeysPage() {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="mt-1 block w-full px-3 py-2 border border-base rounded-md shadow-sm bg-base text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                className="mt-1 block w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-sm bg-[var(--color-bg-base)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
                 placeholder="My MacBook Pro"
                 maxLength={100}
               />
-              <p className="mt-1 text-xs text-muted">
-                A descriptive name for this key (e.g., &quot;Work Laptop&quot;, &quot;Home
-                PC&quot;)
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                A descriptive name for this key (e.g., &quot;Work Laptop&quot;,
+                &quot;Home PC&quot;)
               </p>
             </div>
 
             <div>
               <label
                 htmlFor="key"
-                className="block text-sm font-medium text-base"
+                className="block text-sm font-medium text-[var(--color-text-primary)]"
               >
-                Public Key <span className="text-red-500">*</span>
+                Public Key{" "}
+                <span className="text-[var(--color-error)]">*</span>
               </label>
               <textarea
                 id="key"
@@ -216,23 +215,24 @@ export default function SSHKeysPage() {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, key: e.target.value }))
                 }
-                className="mt-1 block w-full px-3 py-2 border border-base rounded-md shadow-sm bg-base text-base font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
+                className="mt-1 block w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-sm bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent resize-none"
                 placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@example.com"
               />
-              <p className="mt-1 text-xs text-muted">
-                Paste your public SSH key. Starts with &quot;ssh-rsa&quot;, &quot;ssh-ed25519&quot;,
-                &quot;ecdsa-sha2-*&quot;, or &quot;ssh-dss&quot;.
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                Paste your public SSH key. Starts with &quot;ssh-rsa&quot;,
+                &quot;ssh-ed25519&quot;, &quot;ecdsa-sha2-*&quot;, or
+                &quot;ssh-dss&quot;.
               </p>
             </div>
 
-            <div className="bg-base border border-base rounded-md p-3">
-              <h4 className="text-sm font-medium text-base mb-2">
+            <div className="bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-3">
+              <h4 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
                 How to generate an SSH key:
               </h4>
-              <ol className="text-xs text-muted space-y-1 list-decimal list-inside">
+              <ol className="text-xs text-[var(--color-text-muted)] space-y-1 list-decimal list-inside">
                 <li>
                   Open a terminal and run:{" "}
-                  <code className="bg-panel px-1 py-0.5 rounded text-accent">
+                  <code className="bg-[var(--color-bg-panel)] px-1 py-0.5 rounded text-[var(--color-accent)]">
                     ssh-keygen -t ed25519 -C &quot;your_email@example.com&quot;
                   </code>
                 </li>
@@ -240,7 +240,7 @@ export default function SSHKeysPage() {
                 <li>Enter a secure passphrase (optional but recommended)</li>
                 <li>
                   Copy your public key:{" "}
-                  <code className="bg-panel px-1 py-0.5 rounded text-accent">
+                  <code className="bg-[var(--color-bg-panel)] px-1 py-0.5 rounded text-[var(--color-accent)]">
                     cat ~/.ssh/id_ed25519.pub
                   </code>
                 </li>
@@ -249,32 +249,28 @@ export default function SSHKeysPage() {
             </div>
           </div>
 
-          <div className="px-4 py-3 border-t border-base flex justify-end gap-3">
-            <button
+          <div className="px-4 py-3 border-t border-[var(--color-border)] flex justify-end gap-3">
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => {
                 setShowAddForm(false);
                 setFormData({ title: "", key: "" });
               }}
-              className="px-4 py-2 border border-base rounded-md text-sm font-medium text-base hover:bg-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={addingKey}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            </Button>
+            <Button type="submit" variant="primary" loading={addingKey}>
               {addingKey ? "Adding..." : "Add SSH Key"}
-            </button>
+            </Button>
           </div>
         </form>
       )}
 
       {/* SSH Keys List */}
-      <div className="border border-base rounded-md">
-        <div className="px-4 py-3 border-b border-base bg-panel">
-          <h3 className="font-medium text-base">
+      <div className="border border-[var(--color-border)] rounded-[var(--radius-md)]">
+        <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-panel)]">
+          <h3 className="font-medium text-[var(--color-text-primary)]">
             Your SSH Keys ({keys.length})
           </h3>
         </div>
@@ -291,27 +287,33 @@ export default function SSHKeysPage() {
               strokeWidth="1"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="mx-auto text-muted mb-4"
+              className="mx-auto text-[var(--color-text-muted)] mb-4"
             >
               <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
             </svg>
-            <p className="text-muted">No SSH keys added yet.</p>
-            <p className="text-sm text-muted mt-1">
+            <p className="text-[var(--color-text-muted)]">
+              No SSH keys added yet.
+            </p>
+            <p className="text-sm text-[var(--color-text-muted)] mt-1">
               Add an SSH key to connect to your repositories securely.
             </p>
             {!showAddForm && (
-              <button
+              <Button
+                variant="primary"
+                className="mt-4"
                 onClick={() => setShowAddForm(true)}
-                className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
               >
                 Add your first SSH key
-              </button>
+              </Button>
             )}
           </div>
         ) : (
-          <ul className="divide-y divide-base">
+          <ul className="divide-y divide-[var(--color-border)]">
             {keys.map((key) => (
-              <li key={key.id} className="p-4 flex items-start justify-between">
+              <li
+                key={key.id}
+                className="p-4 flex items-start justify-between"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <svg
@@ -324,33 +326,29 @@ export default function SSHKeysPage() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="text-accent shrink-0"
+                      className="text-[var(--color-accent)] shrink-0"
                     >
                       <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
                     </svg>
-                    <span className="font-medium text-base">{key.title}</span>
-                    {key.key_type && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-base border border-base text-muted">
-                        {key.key_type}
-                      </span>
-                    )}
+                    <span className="font-medium text-[var(--color-text-primary)]">
+                      {key.title}
+                    </span>
                   </div>
 
-                  <div className="mt-1 text-sm text-muted font-mono truncate">
+                  <div className="mt-1 text-sm text-[var(--color-text-muted)] font-mono truncate">
                     {key.fingerprint}
                   </div>
 
-                  <div className="mt-2 flex items-center gap-4 text-xs text-muted">
+                  <div className="mt-2 flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
                     <span>Added {formatDate(key.created_at)}</span>
-                    {key.last_used_at && (
-                      <span>Last used {formatDate(key.last_used_at)}</span>
-                    )}
                   </div>
                 </div>
 
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setKeyToDelete(key)}
-                  className="ml-4 p-2 text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                  className="ml-4 text-[var(--color-text-muted)] hover:text-[var(--color-error)]"
                   title="Delete SSH key"
                 >
                   <svg
@@ -370,7 +368,7 @@ export default function SSHKeysPage() {
                     <line x1="10" y1="11" x2="10" y2="17" />
                     <line x1="14" y1="11" x2="14" y2="17" />
                   </svg>
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -378,23 +376,29 @@ export default function SSHKeysPage() {
       </div>
 
       {/* Usage Instructions */}
-      <div className="border border-base rounded-md bg-panel">
-        <div className="px-4 py-3 border-b border-base">
-          <h3 className="font-medium text-base">Using SSH with Git</h3>
+      <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-bg-panel)]">
+        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+          <h3 className="font-medium text-[var(--color-text-primary)]">
+            Using SSH with Git
+          </h3>
         </div>
-        <div className="p-4 text-sm text-muted space-y-3">
+        <div className="p-4 text-sm text-[var(--color-text-muted)] space-y-3">
           <p>
-            Once you&apos;ve added your SSH key, you can clone repositories using SSH:
+            Once you&apos;ve added your SSH key, you can clone repositories using
+            SSH:
           </p>
-          <code className="block bg-base border border-base rounded-md p-3 text-accent font-mono text-xs overflow-x-auto">
+          <code className="block bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-3 text-[var(--color-accent)] font-mono text-xs overflow-x-auto">
             git clone ssh://git@localhost:2222/username/repo.git
           </code>
           <p>
             You can also configure your SSH client by adding to{" "}
-            <code className="bg-base px-1 py-0.5 rounded">~/.ssh/config</code>:
+            <code className="bg-[var(--color-bg-base)] px-1 py-0.5 rounded">
+              ~/.ssh/config
+            </code>
+            :
           </p>
-          <pre className="block bg-base border border-base rounded-md p-3 text-accent font-mono text-xs overflow-x-auto">
-{`Host git-server
+          <pre className="block bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-3 text-[var(--color-accent)] font-mono text-xs overflow-x-auto">
+            {`Host git-server
   HostName localhost
   Port 2222
   User git
@@ -404,38 +408,35 @@ export default function SSHKeysPage() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {keyToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-panel border border-base rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-base mb-4">
-              Delete SSH Key?
-            </h3>
-            <p className="text-sm text-muted mb-4">
-              Are you sure you want to delete the SSH key{" "}
-              <strong>&quot;{keyToDelete.title}&quot;</strong>? You will no longer be able
-              to use this key to authenticate.
-            </p>
+      <Modal
+        isOpen={!!keyToDelete}
+        onClose={() => setKeyToDelete(null)}
+        title="Delete SSH Key?"
+      >
+        <p className="text-sm text-[var(--color-text-muted)] mb-4">
+          Are you sure you want to delete the SSH key{" "}
+          <strong>&quot;{keyToDelete?.title}&quot;</strong>? You will no longer be
+          able to use this key to authenticate.
+        </p>
 
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setKeyToDelete(null)}
-                className="px-4 py-2 border border-base rounded-md text-sm font-medium text-base hover:bg-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteKey}
-                disabled={deletingKeyId === keyToDelete.id}
-                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deletingKeyId === keyToDelete.id ? "Deleting..." : "Delete Key"}
-              </button>
-            </div>
-          </div>
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setKeyToDelete(null)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            loading={deletingKeyId === keyToDelete?.id}
+            onClick={handleDeleteKey}
+          >
+            {deletingKeyId === keyToDelete?.id ? "Deleting..." : "Delete Key"}
+          </Button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

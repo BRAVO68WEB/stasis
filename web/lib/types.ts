@@ -6,6 +6,24 @@ export interface UserInfo {
   is_admin: boolean;
 }
 
+export interface SocialLink {
+  url: string;
+  name: string;
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  display_name?: string;
+  bio?: string;
+  company?: string;
+  location?: string;
+  website?: string;
+  avatar_url?: string;
+  social_links?: SocialLink[];
+  created_at: string;
+}
+
 export interface UpdateUserRequest {
   username: string;
 }
@@ -117,16 +135,17 @@ export interface PublicRepoListResponse {
 }
 
 export interface RepoStats {
-  commits: number;
-  branches: number;
-  tags: number;
-  contributors: number;
-  size_bytes: number;
-  branch_count?: number;
-  tag_count?: number;
-  total_commits?: number;
-  disk_usage?: number;
+  total_commits: number;
+  branch_count: number;
+  tag_count: number;
+  disk_usage: number;
   language_usage_perc?: Record<string, number>;
+  // Legacy aliases (optional, for backward compatibility)
+  commits?: number;
+  branches?: number;
+  tags?: number;
+  contributors?: number;
+  size_bytes?: number;
 }
 
 // Branch types
@@ -166,6 +185,18 @@ export interface TagListResponse {
   total: number;
 }
 
+// Contributor types
+export interface Contributor {
+  username: string;
+  email: string;
+  commit_count: number;
+}
+
+export interface ContributorsResponse {
+  contributors: Contributor[];
+  total: number;
+}
+
 // Error types
 export interface ErrorResponse {
   error: string;
@@ -188,6 +219,10 @@ export interface FileEntry {
   name: string;
   path: string;
   size?: number;
+  last_commit_message?: string;
+  last_commit_hash?: string;
+  last_commit_author?: string;
+  last_commit_date?: string;
 }
 
 export interface Commit {
@@ -283,8 +318,6 @@ export interface SSHKeyInfo {
   id: string;
   title: string;
   fingerprint: string;
-  key_type?: string;
-  last_used_at?: string;
   created_at: string;
 }
 
@@ -307,17 +340,16 @@ export interface ListSSHKeysResponse {
 export interface TokenInfo {
   id: string;
   name: string;
-  token_hint: string;
   scopes: string[];
   expires_at?: string;
-  last_used_at?: string;
+  last_used?: string;
   created_at: string;
 }
 
 export interface CreateTokenRequest {
   name: string;
   scopes?: string[];
-  expires_at?: string;
+  expires_in?: number;
 }
 
 export interface CreateTokenResponse {
@@ -371,15 +403,13 @@ export interface CIJob {
 }
 
 export interface CIJobStep {
-  id: string;
   name: string;
   step_type: CIStepType;
   status: CIJobStatus;
   exit_code?: number;
-  order: number;
   started_at?: string;
   finished_at?: string;
-  duration_seconds?: number;
+  duration_secs?: number;
 }
 
 export interface CIJobLog {
@@ -391,14 +421,10 @@ export interface CIJobLog {
 }
 
 export interface CIArtifact {
-  id: string;
   name: string;
-  path: string;
   size: number;
   checksum: string;
   url?: string;
-  created_at: string;
-  expires_at?: string;
 }
 
 export interface CIJobListResponse {
@@ -437,4 +463,24 @@ export interface CIJobEvent {
   type: "connected" | "status" | "log" | "step" | "artifact";
   job_id: string;
   data: CIJobLog | CIJob | unknown;
+}
+
+// Linked Emails types
+export interface LinkedEmailsResponse {
+  emails: string[];
+}
+
+// Activity / Commit heatmap types
+export interface DayActivity {
+  date: string;
+  count: number;
+  level: number; // 0-4
+}
+
+export interface ActivityResponse {
+  days: DayActivity[];
+  total: number;
+  year?: number;
+  current_streak: number;
+  longest_streak: number;
 }

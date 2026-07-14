@@ -2,13 +2,33 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { listTokens, createToken, deleteToken, isAuthenticated } from "@/lib/api";
+import {
+  listTokens,
+  createToken,
+  deleteToken,
+  isAuthenticated,
+} from "@/lib/api";
 import { TokenInfo } from "@/lib/types";
+import Button from "@/components/ui/Button";
+import Alert from "@/components/ui/Alert";
+import Modal from "@/components/ui/Modal";
 
 const AVAILABLE_SCOPES = [
-  { value: "repo:read", label: "Read repositories", description: "Access to read public and private repositories" },
-  { value: "repo:write", label: "Write repositories", description: "Push commits and create branches" },
-  { value: "repo:admin", label: "Admin repositories", description: "Full admin access to repositories" },
+  {
+    value: "repo:read",
+    label: "Read repositories",
+    description: "Access to read public and private repositories",
+  },
+  {
+    value: "repo:write",
+    label: "Write repositories",
+    description: "Push commits and create branches",
+  },
+  {
+    value: "repo:admin",
+    label: "Admin repositories",
+    description: "Full admin access to repositories",
+  },
 ];
 
 export default function TokensPage() {
@@ -78,14 +98,14 @@ export default function TokensPage() {
     setAddingToken(true);
 
     try {
-      const expiresAt = formData.expiresIn
-        ? new Date(Date.now() + parseInt(formData.expiresIn) * 24 * 60 * 60 * 1000).toISOString()
+      const expiresIn = formData.expiresIn
+        ? parseInt(formData.expiresIn)
         : undefined;
 
       const response = await createToken({
         name: formData.name.trim(),
         scopes: formData.scopes.length > 0 ? formData.scopes : undefined,
-        expires_at: expiresAt,
+        expires_in: expiresIn,
       });
 
       setNewToken(response.token);
@@ -147,7 +167,9 @@ export default function TokensPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-muted">Loading access tokens...</div>
+        <div className="text-[var(--color-text-muted)]">
+          Loading access tokens...
+        </div>
       </div>
     );
   }
@@ -156,38 +178,30 @@ export default function TokensPage() {
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-base">Personal Access Tokens</h2>
-          <p className="text-sm text-muted mt-1">
-            Personal access tokens can be used to authenticate with the API or Git over HTTP.
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+            Personal Access Tokens
+          </h2>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">
+            Personal access tokens can be used to authenticate with the API or
+            Git over HTTP.
           </p>
         </div>
         {!showAddForm && !newToken && (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-          >
+          <Button variant="primary" onClick={() => setShowAddForm(true)}>
             Generate New Token
-          </button>
+          </Button>
         )}
       </div>
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-md text-sm">
-          {error}
-        </div>
-      )}
+      {error && <Alert type="error">{error}</Alert>}
 
-      {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-md text-sm">
-          {success}
-        </div>
-      )}
+      {success && <Alert type="success">{success}</Alert>}
 
       {/* New Token Display (shown only once after creation) */}
       {newToken && (
-        <div className="border border-yellow-400 dark:border-yellow-600 rounded-md bg-yellow-50 dark:bg-yellow-900/20">
-          <div className="px-4 py-3 border-b border-yellow-400 dark:border-yellow-600">
-            <h3 className="font-medium text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+        <Alert type="warning">
+          <div className="space-y-3">
+            <h3 className="font-medium flex items-center gap-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -205,43 +219,52 @@ export default function TokensPage() {
               </svg>
               Make sure to copy your token now!
             </h3>
-          </div>
-          <div className="p-4 space-y-4">
-            <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              This is the only time you will be able to see this token. Store it somewhere safe.
+            <p className="text-sm">
+              This is the only time you will be able to see this token. Store it
+              somewhere safe.
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 bg-white dark:bg-gray-900 border border-yellow-400 dark:border-yellow-600 rounded-md p-3 font-mono text-sm break-all">
+              <code className="flex-1 bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-3 font-mono text-sm break-all">
                 {newToken}
               </code>
-              <button
+              <Button
+                variant="secondary"
                 onClick={handleCopyToken}
-                className="px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-md transition-colors"
               >
                 {copied ? "Copied!" : "Copy"}
-              </button>
+              </Button>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              className="w-full"
               onClick={handleCloseNewToken}
-              className="w-full px-4 py-2 border border-yellow-400 dark:border-yellow-600 rounded-md text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
             >
               I&apos;ve copied my token
-            </button>
+            </Button>
           </div>
-        </div>
+        </Alert>
       )}
 
       {/* Add Token Form */}
       {showAddForm && !newToken && (
-        <form onSubmit={handleAddToken} className="border border-base rounded-md bg-panel">
-          <div className="px-4 py-3 border-b border-base">
-            <h3 className="font-medium text-base">Generate new token</h3>
+        <form
+          onSubmit={handleAddToken}
+          className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-bg-panel)]"
+        >
+          <div className="px-4 py-3 border-b border-[var(--color-border)]">
+            <h3 className="font-medium text-[var(--color-text-primary)]">
+              Generate new token
+            </h3>
           </div>
 
           <div className="p-4 space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-base">
-                Token Name <span className="text-red-500">*</span>
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-[var(--color-text-primary)]"
+              >
+                Token Name{" "}
+                <span className="text-[var(--color-error)]">*</span>
               </label>
               <input
                 id="name"
@@ -249,24 +272,31 @@ export default function TokensPage() {
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                className="mt-1 block w-full px-3 py-2 border border-base rounded-md shadow-sm bg-base text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
+                className="mt-1 block w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-sm bg-[var(--color-bg-base)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
                 placeholder="My API Token"
                 maxLength={100}
               />
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                 A descriptive name to identify this token
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-base mb-2">
+              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
                 Expiration
               </label>
               <select
                 value={formData.expiresIn}
-                onChange={(e) => setFormData((prev) => ({ ...prev, expiresIn: e.target.value }))}
-                className="block w-full px-3 py-2 border border-base rounded-md shadow-sm bg-base text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    expiresIn: e.target.value,
+                  }))
+                }
+                className="block w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-sm bg-[var(--color-bg-base)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
               >
                 <option value="7">7 days</option>
                 <option value="30">30 days</option>
@@ -277,17 +307,18 @@ export default function TokensPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-base mb-2">
+              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
                 Scopes (optional)
               </label>
-              <p className="text-xs text-muted mb-3">
-                Select the permissions for this token. If no scopes are selected, the token will have full access.
+              <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                Select the permissions for this token. If no scopes are selected,
+                the token will have full access.
               </p>
               <div className="space-y-2">
                 {AVAILABLE_SCOPES.map((scope) => (
                   <label
                     key={scope.value}
-                    className="flex items-start gap-3 p-3 border border-base rounded-md hover:bg-base cursor-pointer"
+                    className="flex items-start gap-3 p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] hover:bg-[var(--color-bg-base)] cursor-pointer"
                   >
                     <input
                       type="checkbox"
@@ -296,8 +327,12 @@ export default function TokensPage() {
                       className="mt-0.5"
                     />
                     <div>
-                      <div className="text-sm font-medium text-base">{scope.label}</div>
-                      <div className="text-xs text-muted">{scope.description}</div>
+                      <div className="text-sm font-medium text-[var(--color-text-primary)]">
+                        {scope.label}
+                      </div>
+                      <div className="text-xs text-[var(--color-text-muted)]">
+                        {scope.description}
+                      </div>
                     </div>
                   </label>
                 ))}
@@ -305,32 +340,30 @@ export default function TokensPage() {
             </div>
           </div>
 
-          <div className="px-4 py-3 border-t border-base flex justify-end gap-3">
-            <button
+          <div className="px-4 py-3 border-t border-[var(--color-border)] flex justify-end gap-3">
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => {
                 setShowAddForm(false);
                 setFormData({ name: "", scopes: [], expiresIn: "90" });
               }}
-              className="px-4 py-2 border border-base rounded-md text-sm font-medium text-base hover:bg-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={addingToken}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            </Button>
+            <Button type="submit" variant="primary" loading={addingToken}>
               {addingToken ? "Generating..." : "Generate Token"}
-            </button>
+            </Button>
           </div>
         </form>
       )}
 
       {/* Tokens List */}
-      <div className="border border-base rounded-md">
-        <div className="px-4 py-3 border-b border-base bg-panel">
-          <h3 className="font-medium text-base">Your Tokens ({tokens.length})</h3>
+      <div className="border border-[var(--color-border)] rounded-[var(--radius-md)]">
+        <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-panel)]">
+          <h3 className="font-medium text-[var(--color-text-primary)]">
+            Your Tokens ({tokens.length})
+          </h3>
         </div>
 
         {tokens.length === 0 ? (
@@ -345,28 +378,35 @@ export default function TokensPage() {
               strokeWidth="1"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="mx-auto text-muted mb-4"
+              className="mx-auto text-[var(--color-text-muted)] mb-4"
             >
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            <p className="text-muted">No access tokens created yet.</p>
-            <p className="text-sm text-muted mt-1">
-              Generate a token to access the API or clone repositories over HTTP.
+            <p className="text-[var(--color-text-muted)]">
+              No access tokens created yet.
+            </p>
+            <p className="text-sm text-[var(--color-text-muted)] mt-1">
+              Generate a token to access the API or clone repositories over
+              HTTP.
             </p>
             {!showAddForm && (
-              <button
+              <Button
+                variant="primary"
+                className="mt-4"
                 onClick={() => setShowAddForm(true)}
-                className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
               >
                 Generate your first token
-              </button>
+              </Button>
             )}
           </div>
         ) : (
-          <ul className="divide-y divide-base">
+          <ul className="divide-y divide-[var(--color-border)]">
             {tokens.map((token) => (
-              <li key={token.id} className="p-4 flex items-start justify-between">
+              <li
+                key={token.id}
+                className="p-4 flex items-start justify-between"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <svg
@@ -379,21 +419,26 @@ export default function TokensPage() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="text-accent shrink-0"
+                      className="text-[var(--color-accent)] shrink-0"
                     >
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <rect
+                        x="3"
+                        y="11"
+                        width="18"
+                        height="11"
+                        rx="2"
+                        ry="2"
+                      />
                       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                     </svg>
-                    <span className="font-medium text-base">{token.name}</span>
+                    <span className="font-medium text-[var(--color-text-primary)]">
+                      {token.name}
+                    </span>
                     {token.expires_at && isExpired(token.expires_at) && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 text-[var(--color-error)]">
                         Expired
                       </span>
                     )}
-                  </div>
-
-                  <div className="mt-1 text-sm text-muted font-mono">
-                    Sx•••{token.token_hint}
                   </div>
 
                   {token.scopes && token.scopes.length > 0 && (
@@ -401,7 +446,7 @@ export default function TokensPage() {
                       {token.scopes.map((scope) => (
                         <span
                           key={scope}
-                          className="text-xs px-2 py-0.5 rounded-full bg-base border border-base text-muted"
+                          className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-bg-base)] border border-[var(--color-border)] text-[var(--color-text-muted)]"
                         >
                           {scope}
                         </span>
@@ -409,7 +454,7 @@ export default function TokensPage() {
                     </div>
                   )}
 
-                  <div className="mt-2 flex items-center gap-4 text-xs text-muted">
+                  <div className="mt-2 flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
                     <span>Created {formatDate(token.created_at)}</span>
                     {token.expires_at && (
                       <span>
@@ -417,15 +462,17 @@ export default function TokensPage() {
                         {formatDate(token.expires_at)}
                       </span>
                     )}
-                    {token.last_used_at && (
-                      <span>Last used {formatDate(token.last_used_at)}</span>
+                    {token.last_used && (
+                      <span>Last used {formatDate(token.last_used)}</span>
                     )}
                   </div>
                 </div>
 
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setTokenToDelete(token)}
-                  className="ml-4 p-2 text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                  className="ml-4 text-[var(--color-text-muted)] hover:text-[var(--color-error)]"
                   title="Delete token"
                 >
                   <svg
@@ -445,7 +492,7 @@ export default function TokensPage() {
                     <line x1="10" y1="11" x2="10" y2="17" />
                     <line x1="14" y1="11" x2="14" y2="17" />
                   </svg>
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -453,60 +500,70 @@ export default function TokensPage() {
       </div>
 
       {/* Usage Instructions */}
-      <div className="border border-base rounded-md bg-panel">
-        <div className="px-4 py-3 border-b border-base">
-          <h3 className="font-medium text-base">Using Personal Access Tokens</h3>
+      <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-bg-panel)]">
+        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+          <h3 className="font-medium text-[var(--color-text-primary)]">
+            Using Personal Access Tokens
+          </h3>
         </div>
-        <div className="p-4 text-sm text-muted space-y-3">
+        <div className="p-4 text-sm text-[var(--color-text-muted)] space-y-3">
           <p>
-            Personal access tokens can be used instead of passwords for Git over HTTP or API access.
+            Personal access tokens can be used instead of passwords for Git over
+            HTTP or API access.
           </p>
           <div>
-            <p className="font-medium text-base mb-1">Git clone with token:</p>
-            <code className="block bg-base border border-base rounded-md p-3 text-accent font-mono text-xs overflow-x-auto">
-              git clone https://username:YOUR_TOKEN@example.com/username/repo.git
+            <p className="font-medium text-[var(--color-text-primary)] mb-1">
+              Git clone with token:
+            </p>
+            <code className="block bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-3 text-[var(--color-accent)] font-mono text-xs overflow-x-auto">
+              git clone
+              https://username:YOUR_TOKEN@example.com/username/repo.git
             </code>
           </div>
           <div>
-            <p className="font-medium text-base mb-1">API request with token:</p>
-            <code className="block bg-base border border-base rounded-md p-3 text-accent font-mono text-xs overflow-x-auto">
-              curl -H &quot;Authorization: Bearer YOUR_TOKEN&quot; https://example.com/api/v1/repos
+            <p className="font-medium text-[var(--color-text-primary)] mb-1">
+              API request with token:
+            </p>
+            <code className="block bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-3 text-[var(--color-accent)] font-mono text-xs overflow-x-auto">
+              curl -H &quot;Authorization: Bearer YOUR_TOKEN&quot;
+              https://example.com/api/v1/repos
             </code>
           </div>
         </div>
       </div>
 
       {/* Delete Confirmation Modal */}
-      {tokenToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-panel border border-base rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-base mb-4">Delete Access Token?</h3>
-            <p className="text-sm text-muted mb-4">
-              Are you sure you want to delete the token{" "}
-              <strong>&quot;{tokenToDelete.name}&quot;</strong>? Any applications using this token
-              will no longer be able to access your account.
-            </p>
+      <Modal
+        isOpen={!!tokenToDelete}
+        onClose={() => setTokenToDelete(null)}
+        title="Delete Access Token?"
+      >
+        <p className="text-sm text-[var(--color-text-muted)] mb-4">
+          Are you sure you want to delete the token{" "}
+          <strong>&quot;{tokenToDelete?.name}&quot;</strong>? Any applications
+          using this token will no longer be able to access your account.
+        </p>
 
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setTokenToDelete(null)}
-                className="px-4 py-2 border border-base rounded-md text-sm font-medium text-base hover:bg-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteToken}
-                disabled={deletingTokenId === tokenToDelete.id}
-                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deletingTokenId === tokenToDelete.id ? "Deleting..." : "Delete Token"}
-              </button>
-            </div>
-          </div>
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setTokenToDelete(null)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            loading={deletingTokenId === tokenToDelete?.id}
+            onClick={handleDeleteToken}
+          >
+            {deletingTokenId === tokenToDelete?.id
+              ? "Deleting..."
+              : "Delete Token"}
+          </Button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
