@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   listCIJobs,
+  triggerCIJob,
   getCIStatusColor,
   getCIStatusBgColor,
   formatCIDuration,
 } from "@/lib/api";
-import { CIJob, CIJobListResponse } from "@/lib/types";
+import { CIJob, CIJobListResponse, TriggerCIJobResponse } from "@/lib/types";
 
 // Status icon component
 function StatusIcon({ status }: { status: string }) {
@@ -148,6 +149,16 @@ export default function CIJobsPage() {
   const [page, setPage] = useState(0);
   const limit = 20;
 
+  const [showTriggerForm, setShowTriggerForm] = useState(false);
+  const [triggering, setTriggering] = useState(false);
+  const [triggerError, setTriggerError] = useState<string | null>(null);
+  const [triggerSuccess, setTriggerSuccess] = useState<TriggerCIJobResponse | null>(null);
+  const [formData, setFormData] = useState({
+    refType: "branch" as "branch" | "tag",
+    refName: "",
+    commitSha: "",
+  });
+
   useEffect(() => {
     async function fetchJobs() {
       try {
@@ -196,19 +207,49 @@ export default function CIJobsPage() {
     return () => clearInterval(interval);
   }, [jobs, username, repo, page]);
 
+  const handleTrigger = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTriggerError(null);
+    setTriggerSuccess(null);
+
+    if (!formData.refName.trim()) {
+      setTriggerError("Branch or tag name is required");
+      return;
+    }
+
+    setTriggering(true);
+    try {
+      const result = await triggerCIJob(username, repo, {
+        ref_type: formData.refType,
+        ref_name: formData.refName.trim(),
+        commit_sha: formData.commitSha.trim() || "HEAD",
+      });
+      setTriggerSuccess(result);
+      setFormData({ refType: "branch", refName: "", commitSha: "" });
+      setShowTriggerForm(false);
+      const response = await listCIJobs(username, repo, limit, page * limit);
+      setJobs(response.jobs);
+      setTotal(response.total);
+    } catch (err) {
+      setTriggerError(err instanceof Error ? err.message : "Failed to trigger job");
+    } finally {
+      setTriggering(false);
+    }
+  };
+
   const totalPages = Math.ceil(total / limit);
 
   if (loading && jobs.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--color-accent)]"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-500/10 border border-red-500/30 rounded-md p-4 text-red-500">
+      <div className="alert alert-error">
         <p className="font-medium">Error loading CI jobs</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -217,29 +258,121 @@ export default function CIJobsPage() {
 
   if (jobs.length === 0) {
     return (
-      <div className="text-center py-20">
-        <svg
-          className="mx-auto h-12 w-12 text-muted"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <h3 className="mt-4 text-lg font-medium text-base">No CI jobs yet</h3>
-        <p className="mt-2 text-muted">
-          CI jobs will appear here when you push to this repository.
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          Make sure you have a{" "}
-          <code className="bg-panel px-1 rounded">.stasis-ci.yaml</code> file in
-          your repository.
-        </p>
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">CI Jobs</h2>
+          <button
+            onClick={() => {
+              setShowTriggerForm(!showTriggerForm);
+              setTriggerError(null);
+              setTriggerSuccess(null);
+            }}
+            className="btn btn-primary"
+          >
+            Trigger Job
+          </button>
+        </div>
+
+        {showTriggerForm && (
+          <form onSubmit={handleTrigger} className="mb-6 p-4 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-md">
+            <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Trigger CI Job</h3>
+            {triggerError && (
+              <div className="mb-3 alert alert-error text-sm">
+                {triggerError}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                  Ref Type
+                </label>
+                <select
+                  value={formData.refType}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      refType: e.target.value as "branch" | "tag",
+                    }))
+                  }
+                  className="w-full px-3 py-2 bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-md text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/50"
+                >
+                  <option value="branch">Branch</option>
+                  <option value="tag">Tag</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                  {formData.refType === "branch" ? "Branch Name" : "Tag Name"}
+                </label>
+                <input
+                  type="text"
+                  value={formData.refName}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, refName: e.target.value }))
+                  }
+                  placeholder={formData.refType === "branch" ? "main" : "v1.0.0"}
+                  className="w-full px-3 py-2 bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-md text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/50"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                  Commit SHA <span className="text-xs">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.commitSha}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, commitSha: e.target.value }))
+                  }
+                  placeholder="HEAD"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-md text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/50"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={triggering}
+                className="btn btn-primary"
+              >
+                {triggering ? "Triggering..." : "Trigger"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTriggerForm(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="text-center py-20">
+          <svg
+            className="mx-auto h-12 w-12 text-[var(--color-text-muted)]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <h3 className="mt-4 text-lg font-medium text-[var(--color-text-primary)]">No CI jobs yet</h3>
+          <p className="mt-2 text-[var(--color-text-muted)]">
+            CI jobs will appear here when you push to this repository.
+          </p>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+            Make sure you have a{" "}
+            <code className="bg-[var(--color-bg-panel)] px-1 rounded">.stasis-ci.yaml</code> file in
+            your repository.
+          </p>
+        </div>
       </div>
     );
   }
@@ -247,30 +380,124 @@ export default function CIJobsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-base">CI Jobs</h2>
-        <span className="text-sm text-muted">{total} total jobs</span>
+        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">CI Jobs</h2>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[var(--color-text-muted)]">{total} total jobs</span>
+          <button
+            onClick={() => {
+              setShowTriggerForm(!showTriggerForm);
+              setTriggerError(null);
+              setTriggerSuccess(null);
+            }}
+            className="btn btn-primary"
+          >
+            Trigger Job
+          </button>
+        </div>
       </div>
 
-      <div className="border border-base rounded-md overflow-hidden">
+      {triggerSuccess && (
+        <div className="mb-4 alert alert-success text-sm">
+          Job triggered successfully — ID: <code className="bg-[var(--color-bg-panel)] px-1 rounded">{triggerSuccess.job_id}</code>
+        </div>
+      )}
+
+      {showTriggerForm && (
+        <form onSubmit={handleTrigger} className="mb-6 p-4 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-md">
+          <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Trigger CI Job</h3>
+          {triggerError && (
+            <div className="mb-3 alert alert-error text-sm">
+              {triggerError}
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                Ref Type
+              </label>
+              <select
+                value={formData.refType}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    refType: e.target.value as "branch" | "tag",
+                  }))
+                }
+                className="w-full px-3 py-2 bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-md text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/50"
+              >
+                <option value="branch">Branch</option>
+                <option value="tag">Tag</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                {formData.refType === "branch" ? "Branch Name" : "Tag Name"}
+              </label>
+              <input
+                type="text"
+                value={formData.refName}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, refName: e.target.value }))
+                }
+                placeholder={formData.refType === "branch" ? "main" : "v1.0.0"}
+                className="w-full px-3 py-2 bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-md text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/50"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                Commit SHA <span className="text-xs">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.commitSha}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, commitSha: e.target.value }))
+                }
+                placeholder="HEAD"
+                className="w-full px-3 py-2 bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-md text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/50"
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={triggering}
+              className="btn btn-primary"
+            >
+              {triggering ? "Triggering..." : "Trigger"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTriggerForm(false)}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="border border-[var(--color-border)] rounded-md overflow-hidden">
         <table className="w-full">
-          <thead className="bg-panel border-b border-base">
+          <thead className="bg-[var(--color-bg-panel)] border-b border-[var(--color-border)]">
             <tr>
-              <th className="text-left px-4 py-3 text-sm font-medium text-muted">
+              <th className="text-left px-4 py-3 text-sm font-medium text-[var(--color-text-muted)]">
                 Status
               </th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-muted">
+              <th className="text-left px-4 py-3 text-sm font-medium text-[var(--color-text-muted)]">
                 Commit
               </th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-muted">
+              <th className="text-left px-4 py-3 text-sm font-medium text-[var(--color-text-muted)]">
                 Branch / Tag
               </th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-muted">
+              <th className="text-left px-4 py-3 text-sm font-medium text-[var(--color-text-muted)]">
                 Trigger
               </th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-muted">
+              <th className="text-left px-4 py-3 text-sm font-medium text-[var(--color-text-muted)]">
                 Duration
               </th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-muted">
+              <th className="text-left px-4 py-3 text-sm font-medium text-[var(--color-text-muted)]">
                 Started
               </th>
             </tr>
@@ -279,7 +506,7 @@ export default function CIJobsPage() {
             {jobs.map((job) => (
               <tr
                 key={job.id}
-                className="border-b border-base last:border-b-0 hover:bg-panel/50 cursor-pointer transition-colors"
+                className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-bg-panel)]/50 cursor-pointer transition-colors"
                 onClick={() => router.push(`/${username}/${repo}/ci/${job.id}`)}
               >
                 <td className="px-4 py-3">
@@ -295,7 +522,7 @@ export default function CIJobsPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <code className="text-sm font-mono text-accent">
+                  <code className="text-sm font-mono text-[var(--color-accent)]">
                     {job.commit_sha.substring(0, 7)}
                   </code>
                 </td>
@@ -303,7 +530,7 @@ export default function CIJobsPage() {
                   <span className="inline-flex items-center gap-1 text-sm">
                     {job.ref_type === "tag" ? (
                       <svg
-                        className="w-4 h-4 text-muted"
+                        className="w-4 h-4 text-[var(--color-text-muted)]"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -317,7 +544,7 @@ export default function CIJobsPage() {
                       </svg>
                     ) : (
                       <svg
-                        className="w-4 h-4 text-muted"
+                        className="w-4 h-4 text-[var(--color-text-muted)]"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -330,22 +557,22 @@ export default function CIJobsPage() {
                         />
                       </svg>
                     )}
-                    <span className="text-base">{job.ref_name}</span>
+                    <span className="text-[var(--color-text-primary)]">{job.ref_name}</span>
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-sm text-muted">
+                  <span className="text-sm text-[var(--color-text-muted)]">
                     {job.trigger_type} by{" "}
-                    <span className="text-base">{job.trigger_actor}</span>
+                    <span className="text-[var(--color-text-primary)]">{job.trigger_actor}</span>
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-sm text-muted">
+                  <span className="text-sm text-[var(--color-text-muted)]">
                     {formatCIDuration(job.duration_seconds)}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-sm text-muted">
+                  <span className="text-sm text-[var(--color-text-muted)]">
                     {job.started_at
                       ? formatRelativeTime(job.started_at)
                       : job.created_at
@@ -365,17 +592,17 @@ export default function CIJobsPage() {
           <button
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="px-4 py-2 text-sm font-medium text-base bg-panel border border-base rounded-md hover:bg-base disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-secondary"
           >
             Previous
           </button>
-          <span className="text-sm text-muted">
+          <span className="text-sm text-[var(--color-text-muted)]">
             Page {page + 1} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
-            className="px-4 py-2 text-sm font-medium text-base bg-panel border border-base rounded-md hover:bg-base disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-secondary"
           >
             Next
           </button>

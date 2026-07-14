@@ -163,20 +163,20 @@ export function CIStatusDot({ owner, repo, className = "" }: CIStatusBadgeProps)
 function getDotColor(status: CIJobStatus): string {
   switch (status) {
     case "success":
-      return "bg-green-500";
+      return "bg-[var(--color-success)]";
     case "failed":
     case "error":
-      return "bg-red-500";
+      return "bg-[var(--color-error)]";
     case "running":
-      return "bg-blue-500";
+      return "bg-[var(--color-info)]";
     case "pending":
     case "queued":
-      return "bg-yellow-500";
+      return "bg-[var(--color-warning)]";
     case "cancelled":
-      return "bg-gray-500";
+      return "bg-[var(--color-text-muted)]";
     case "timed_out":
-      return "bg-orange-500";
+      return "bg-[var(--color-warning)]";
     default:
-      return "bg-gray-400";
+      return "bg-[var(--color-text-muted)]";
   }
 }

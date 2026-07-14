@@ -137,14 +137,14 @@ function StatusIcon({
 function getLogLevelColor(level: string): string {
   switch (level) {
     case "error":
-      return "text-red-400";
+      return "text-[var(--color-error)]";
     case "warning":
     case "warn":
-      return "text-yellow-400";
+      return "text-[var(--color-warning)]";
     case "debug":
-      return "text-gray-400";
+      return "text-[var(--color-text-muted)]";
     default:
-      return "text-gray-300";
+      return "text-[var(--color-text-secondary)]";
   }
 }
 
@@ -341,19 +341,19 @@ export default function CIJobDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--color-accent)]"></div>
       </div>
     );
   }
 
   if (error || !job) {
     return (
-      <div className="bg-red-500/10 border border-red-500/30 rounded-md p-4 text-red-500">
+      <div className="alert alert-error">
         <p className="font-medium">Error loading CI job</p>
         <p className="text-sm mt-1">{error || "Job not found"}</p>
         <Link
           href={`/${username}/${repo}/ci`}
-          className="inline-block mt-4 text-sm text-accent hover:underline"
+          className="inline-block mt-4 text-sm text-[var(--color-accent)] hover:underline"
         >
           ← Back to CI jobs
         </Link>
@@ -379,7 +379,7 @@ export default function CIJobDetailPage() {
           <div className="flex items-center gap-3 mb-2">
             <Link
               href={`/${username}/${repo}/ci`}
-              className="text-muted hover:text-base transition-colors"
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               <svg
                 className="w-5 h-5"
@@ -395,7 +395,7 @@ export default function CIJobDetailPage() {
                 />
               </svg>
             </Link>
-            <h1 className="text-xl font-semibold text-base">
+            <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
               Job #{job.id.substring(0, 8)}
             </h1>
             <span
@@ -407,15 +407,15 @@ export default function CIJobDetailPage() {
               {job.status}
             </span>
             {isStreaming && (
-              <span className="inline-flex items-center gap-1 text-xs text-green-500">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
+                <span className="w-2 h-2 bg-[var(--color-success)] rounded-full animate-pulse"></span>
                 Live
               </span>
             )}
           </div>
-          <p className="text-sm text-muted">
-            Triggered by <span className="text-base">{job.trigger_actor}</span>{" "}
-            via <span className="text-base">{job.trigger_type}</span>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            Triggered by <span className="text-[var(--color-text-primary)]">{job.trigger_actor}</span>{" "}
+            via <span className="text-[var(--color-text-primary)]">{job.trigger_type}</span>
             {job.started_at && (
               <>
                 {" • "}
@@ -436,7 +436,7 @@ export default function CIJobDetailPage() {
             <button
               onClick={handleCancel}
               disabled={actionLoading !== null}
-              className="px-4 py-2 text-sm font-medium text-red-500 bg-red-500/10 border border-red-500/30 rounded-md hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn btn-danger"
             >
               {actionLoading === "cancel" ? "Cancelling..." : "Cancel"}
             </button>
@@ -445,7 +445,7 @@ export default function CIJobDetailPage() {
             <button
               onClick={handleRetry}
               disabled={actionLoading !== null}
-              className="px-4 py-2 text-sm font-medium text-accent bg-accent/10 border border-accent/30 rounded-md hover:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn btn-primary"
             >
               {actionLoading === "retry" ? "Retrying..." : "Retry"}
             </button>
@@ -455,33 +455,33 @@ export default function CIJobDetailPage() {
 
       {/* Job Info */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-panel border border-base rounded-md p-4">
-          <div className="text-xs text-muted uppercase tracking-wide mb-1">
+        <div className="bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-md p-4">
+          <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
             Commit
           </div>
-          <code className="text-sm font-mono text-accent">
+          <code className="text-sm font-mono text-[var(--color-accent)]">
             {job.commit_sha.substring(0, 7)}
           </code>
         </div>
-        <div className="bg-panel border border-base rounded-md p-4">
-          <div className="text-xs text-muted uppercase tracking-wide mb-1">
+        <div className="bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-md p-4">
+          <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
             {job.ref_type === "tag" ? "Tag" : "Branch"}
           </div>
-          <span className="text-sm text-base">{job.ref_name}</span>
+          <span className="text-sm text-[var(--color-text-primary)]">{job.ref_name}</span>
         </div>
-        <div className="bg-panel border border-base rounded-md p-4">
-          <div className="text-xs text-muted uppercase tracking-wide mb-1">
+        <div className="bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-md p-4">
+          <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
             Run ID
           </div>
-          <code className="text-sm font-mono text-muted">
+          <code className="text-sm font-mono text-[var(--color-text-muted)]">
             {job.run_id.substring(0, 8)}
           </code>
         </div>
-        <div className="bg-panel border border-base rounded-md p-4">
-          <div className="text-xs text-muted uppercase tracking-wide mb-1">
+        <div className="bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-md p-4">
+          <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
             Config
           </div>
-          <code className="text-sm font-mono text-muted">
+          <code className="text-sm font-mono text-[var(--color-text-muted)]">
             {job.config_path}
           </code>
         </div>
@@ -489,7 +489,7 @@ export default function CIJobDetailPage() {
 
       {/* Error message */}
       {job.error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-md p-4 text-red-500">
+        <div className="alert alert-error">
           <p className="font-medium">Error</p>
           <p className="text-sm mt-1">{job.error}</p>
         </div>
@@ -497,26 +497,26 @@ export default function CIJobDetailPage() {
 
       {/* Steps */}
       {job.steps && job.steps.length > 0 && (
-        <div className="bg-panel border border-base rounded-md p-4">
-          <h3 className="text-sm font-medium text-base mb-3">Steps</h3>
+        <div className="bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-md p-4">
+          <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Steps</h3>
           <div className="flex flex-wrap gap-2">
             {job.steps.map((step) => (
               <button
-                key={step.id}
+                key={step.name}
                 onClick={() =>
                   setSelectedStep(selectedStep === step.name ? null : step.name)
                 }
                 className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border transition-colors ${
                   selectedStep === step.name
-                    ? "bg-accent/20 border-accent/50 text-accent"
-                    : "bg-base border-base hover:border-accent/30"
+                    ? "bg-[var(--color-accent-muted)] border-[var(--color-accent)] text-[var(--color-accent)]"
+                    : "bg-[var(--color-bg-base)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
                 }`}
               >
                 <StatusIcon status={step.status} size="sm" />
                 <span>{step.name}</span>
-                {step.duration_seconds !== undefined && (
-                  <span className="text-xs text-muted">
-                    ({formatCIDuration(step.duration_seconds)})
+                {step.duration_secs !== undefined && (
+                  <span className="text-xs text-[var(--color-text-muted)]">
+                    ({formatCIDuration(step.duration_secs)})
                   </span>
                 )}
               </button>
@@ -528,13 +528,13 @@ export default function CIJobDetailPage() {
       {/* Step filter from logs (if no steps in job data) */}
       {(!job.steps || job.steps.length === 0) && stepNames.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-muted">Filter by step:</span>
+          <span className="text-sm text-[var(--color-text-muted)]">Filter by step:</span>
           <button
             onClick={() => setSelectedStep(null)}
             className={`px-3 py-1 text-sm rounded-md border transition-colors ${
               selectedStep === null
-                ? "bg-accent/20 border-accent/50 text-accent"
-                : "bg-panel border-base hover:border-accent/30"
+                ? "bg-[var(--color-accent-muted)] border-[var(--color-accent)] text-[var(--color-accent)]"
+                : "bg-[var(--color-bg-panel)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
             }`}
           >
             All
@@ -547,8 +547,8 @@ export default function CIJobDetailPage() {
               }
               className={`px-3 py-1 text-sm rounded-md border transition-colors ${
                 selectedStep === step
-                  ? "bg-accent/20 border-accent/50 text-accent"
-                  : "bg-panel border-base hover:border-accent/30"
+                  ? "bg-[var(--color-accent-muted)] border-[var(--color-accent)] text-[var(--color-accent)]"
+                  : "bg-[var(--color-bg-panel)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
               }`}
             >
               {step}
@@ -558,24 +558,24 @@ export default function CIJobDetailPage() {
       )}
 
       {/* Logs */}
-      <div className="bg-gray-900 border border-base rounded-md overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
-          <h3 className="text-sm font-medium text-gray-300">
+      <div className="bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-md overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2 bg-[var(--color-bg-panel)] border-b border-[var(--color-border)]">
+          <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">
             Logs
             {selectedStep && (
-              <span className="text-muted"> - {selectedStep}</span>
+              <span className="text-[var(--color-text-muted)]"> - {selectedStep}</span>
             )}
           </h3>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-[var(--color-text-muted)]">
               {filteredLogs.length} lines
             </span>
-            <label className="inline-flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+            <label className="inline-flex items-center gap-2 text-xs text-[var(--color-text-secondary)] cursor-pointer">
               <input
                 type="checkbox"
                 checked={autoScroll}
                 onChange={(e) => setAutoScroll(e.target.checked)}
-                className="rounded border-gray-600 bg-gray-700 text-accent focus:ring-accent focus:ring-offset-gray-900"
+                className="rounded border-[var(--color-border)] bg-[var(--color-bg-panel)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
               />
               Auto-scroll
             </label>
@@ -588,7 +588,7 @@ export default function CIJobDetailPage() {
           className="h-[500px] overflow-y-auto font-mono text-sm"
         >
           {filteredLogs.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex items-center justify-center h-full text-[var(--color-text-muted)]">
               {isRunning ? "Waiting for logs..." : "No logs available"}
             </div>
           ) : (
@@ -597,13 +597,13 @@ export default function CIJobDetailPage() {
                 {filteredLogs.map((log, index) => (
                   <tr
                     key={`${log.sequence}-${index}`}
-                    className="hover:bg-gray-800/50"
+                    className="hover:bg-[var(--color-bg-hover)]"
                   >
-                    <td className="px-3 py-0.5 text-gray-500 text-xs whitespace-nowrap select-none w-20">
+                    <td className="px-3 py-0.5 text-[var(--color-text-muted)] text-xs whitespace-nowrap select-none w-20">
                       {formatLogTime(log.timestamp)}
                     </td>
                     {log.step_name && !selectedStep && (
-                      <td className="px-2 py-0.5 text-gray-400 text-xs whitespace-nowrap w-24 truncate">
+                      <td className="px-2 py-0.5 text-[var(--color-text-secondary)] text-xs whitespace-nowrap w-24 truncate">
                         {log.step_name}
                       </td>
                     )}
@@ -623,17 +623,17 @@ export default function CIJobDetailPage() {
 
       {/* Artifacts */}
       {job.artifacts && job.artifacts.length > 0 && (
-        <div className="bg-panel border border-base rounded-md p-4">
-          <h3 className="text-sm font-medium text-base mb-3">Artifacts</h3>
+        <div className="bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-md p-4">
+          <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Artifacts</h3>
           <div className="space-y-2">
             {job.artifacts.map((artifact) => (
               <div
-                key={artifact.id}
-                className="flex items-center justify-between p-3 bg-base border border-base rounded-md"
+                key={artifact.name}
+                className="flex items-center justify-between p-3 bg-[var(--color-bg-base)] border border-[var(--color-border)] rounded-md"
               >
                 <div className="flex items-center gap-3">
                   <svg
-                    className="w-5 h-5 text-muted"
+                    className="w-5 h-5 text-[var(--color-text-muted)]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -646,10 +646,10 @@ export default function CIJobDetailPage() {
                     />
                   </svg>
                   <div>
-                    <div className="text-sm font-medium text-base">
+                    <div className="text-sm font-medium text-[var(--color-text-primary)]">
                       {artifact.name}
                     </div>
-                    <div className="text-xs text-muted">
+                    <div className="text-xs text-[var(--color-text-muted)]">
                       {(artifact.size / 1024).toFixed(1)} KB
                     </div>
                   </div>
@@ -662,7 +662,7 @@ export default function CIJobDetailPage() {
                     artifact.name,
                   )}
                   download={artifact.name}
-                  className="px-3 py-1 text-sm text-accent bg-accent/10 border border-accent/30 rounded-md hover:bg-accent/20 transition-colors"
+                  className="btn btn-primary"
                 >
                   Download
                 </a>

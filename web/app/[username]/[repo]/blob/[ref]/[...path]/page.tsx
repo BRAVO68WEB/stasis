@@ -3,6 +3,10 @@ import Link from "next/link";
 import { BlameLine } from "@/lib/types";
 import Image from "next/image";
 import { CodeViewer } from "@/components/CodeViewer";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
+import OpenAPIRenderer from "@/components/OpenAPIRenderer";
+import { env } from "@/lib/env";
+import { getServerAuthToken } from "@/lib/server-auth";
 
 export default async function BlobPage({
   params,
@@ -17,33 +21,27 @@ export default async function BlobPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { username, repo, ref: refParam, path: pathSegments } = await params;
-  const fullPath = [
-    decodeURIComponent(refParam),
-    ...(pathSegments || []).map((p) => decodeURIComponent(p)),
-  ].join("/");
+  const ref = decodeURIComponent(refParam);
+  const path = (pathSegments || []).map((p) => decodeURIComponent(p)).join("/");
 
   const { blame } = await searchParams;
   const isBlame = blame === "true";
 
+  const authToken = await getServerAuthToken();
+
   let content = "";
   let blameData: BlameLine[] = [];
-  let ref = "";
-  let path = "";
   let failed = false;
   let isBinary = false;
   let encoding = "utf-8";
 
   try {
     if (isBlame) {
-      const data = await getBlame(username, repo, fullPath);
+      const data = await getBlame(username, repo, ref, path);
       blameData = data.blame;
-      ref = data.ref;
-      path = data.path;
     } else {
-      const data = await getBlob(username, repo, fullPath);
+      const data = await getBlob(username, repo, ref, path);
       content = data.content;
-      ref = data.ref;
-      path = data.path;
       isBinary = data.is_binary || false;
       encoding = data.encoding || "utf-8";
     }
@@ -81,6 +79,37 @@ export default async function BlobPage({
   const imageExtensions = ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico"];
   const isImage = imageExtensions.includes(fileExtension);
 
+  const markdownExtensions = ["md", "markdown", "mdx"];
+  const isMarkdown = markdownExtensions.includes(fileExtension) && !isBinary;
+
+  const openapiExtensions = ["yaml", "yml", "json"];
+  const isOpenAPIFilename = [
+    "openapi.yaml",
+    "openapi.yml",
+    "openapi.json",
+    "swagger.yaml",
+    "swagger.yml",
+    "swagger.json",
+  ].includes(path.split("/").pop()?.toLowerCase() || "");
+
+  let isOpenAPI = false;
+  if (
+    !isBinary &&
+    (isOpenAPIFilename || openapiExtensions.includes(fileExtension))
+  ) {
+    try {
+      if (fileExtension === "json") {
+        const parsed = JSON.parse(content);
+        isOpenAPI = !!(parsed.openapi || parsed.swagger);
+      } else {
+        isOpenAPI =
+          content.includes("openapi:") || content.includes("swagger:");
+      }
+    } catch {
+      isOpenAPI = false;
+    }
+  }
+
   return (
     <div className="border border-base rounded-md overflow-hidden bg-panel">
       <div className="px-4 py-3 border-b border-base flex items-center justify-between">
@@ -104,6 +133,19 @@ export default async function BlobPage({
               {isBlame ? "Normal View" : "Blame"}
             </Link>
           )}
+          <a
+            href={(() => {
+              const baseUrl = ref.includes("/")
+                ? `${env.NEXT_PUBLIC_API_URL}/v1/repos/${username}/${repo}/raw/_/${path}?ref=${encodeURIComponent(ref)}`
+                : `${env.NEXT_PUBLIC_API_URL}/v1/repos/${username}/${repo}/raw/${encodeURIComponent(ref)}/${path}`;
+              return authToken ? `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(authToken)}` : baseUrl;
+            })()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs px-3 py-1 rounded transition-colors btn"
+          >
+            Raw
+          </a>
           <Link
             href={`/${username}/${repo}/commits/${ref}/${path}`}
             className="text-xs px-2 py-1 rounded transition-colors btn"
@@ -165,6 +207,15 @@ export default async function BlobPage({
             </tbody>
           </table>
         </div>
+      ) : isMarkdown ? (
+        <div className="p-6">
+          <MarkdownRenderer content={content} />
+        </div>
+      ) : isOpenAPI ? (
+        <OpenAPIRenderer
+          content={content}
+          format={fileExtension === "json" ? "json" : "yaml"}
+        />
       ) : (
         <CodeViewer content={content} filePath={path} />
       )}

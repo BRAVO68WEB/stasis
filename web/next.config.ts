@@ -7,7 +7,6 @@ import type { NextConfig } from "next";
 if (process.env.NODE_ENV == "development") {
   const envPath = resolve(fileURLToPath(import.meta.url), "../../configs/.env");
   dotenvConfig({ path: envPath });
-  console.log(envPath);
 }
 
 const jiti = createJiti(fileURLToPath(import.meta.url));
@@ -18,9 +17,5 @@ jiti("./lib/env");
 const nextConfig: NextConfig = {
   /* config options here */
 };
-
-console.log("ENV", process.env.NEXT_PUBLIC_API_URL);
-console.log("ENV", process.env.STASIS_SERVER_HOSTED_URL);
-console.log("ENV", process.env.STASIS_SSH_HOST_NAME);
 
 export default nextConfig;

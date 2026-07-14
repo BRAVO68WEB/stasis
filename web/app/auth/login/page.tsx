@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getOIDCConfig, initiateOIDCLogin, isAuthenticated } from "@/lib/api";
+import { Button, Alert } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,8 +46,8 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-muted">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-accent)] mx-auto"></div>
+          <p className="mt-4 text-[var(--color-text-muted)]">Loading...</p>
         </div>
       </div>
     );
@@ -56,42 +57,41 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-base">
+          <h2 className="mt-6 text-center text-3xl font-bold text-[var(--color-text-primary)]">
             Sign in to your account
           </h2>
-          <p className="mt-2 text-center text-sm text-muted">
+          <p className="mt-2 text-center text-sm text-[var(--color-text-muted)]">
             Use your organization&apos;s identity provider to sign in
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-md text-sm">
-            {error}
-          </div>
+          <Alert type="error">{error}</Alert>
         )}
 
         {!oidcEnabled ? (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-600 dark:text-yellow-400 px-4 py-3 rounded-md text-sm">
+          <Alert type="warning">
             <p className="font-medium">OIDC Authentication Not Configured</p>
             <p className="mt-1">
               Please contact your administrator to configure OIDC
               authentication.
             </p>
-          </div>
+          </Alert>
         ) : !oidcInitialized ? (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-600 dark:text-yellow-400 px-4 py-3 rounded-md text-sm">
+          <Alert type="warning">
             <p className="font-medium">OIDC Service Unavailable</p>
             <p className="mt-1">
               The authentication service is temporarily unavailable. Please try
               again later.
             </p>
-          </div>
+          </Alert>
         ) : (
           <div className="mt-8 space-y-6">
-            <button
+            <Button
               onClick={handleLogin}
-              disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="primary"
+              size="lg"
+              className="w-full"
             >
               <svg
                 className="w-5 h-5"
@@ -108,9 +108,9 @@ export default function LoginPage() {
                 />
               </svg>
               Sign in with SSO
-            </button>
+            </Button>
 
-            <p className="text-center text-xs text-muted">
+            <p className="text-center text-xs text-[var(--color-text-muted)]">
               You will be redirected to your identity provider to authenticate.
             </p>
           </div>
@@ -119,20 +119,20 @@ export default function LoginPage() {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-base" />
+              <div className="w-full border-t border-[var(--color-border)]" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-base text-muted">Using SSH keys?</span>
+              <span className="px-2 bg-[var(--color-bg-base)] text-[var(--color-text-muted)]">Using SSH keys?</span>
             </div>
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-muted">
+            <p className="text-sm text-[var(--color-text-muted)]">
               After signing in, you can add SSH keys for passwordless Git
               access.{" "}
               <Link
                 href="/settings/ssh-keys"
-                className="text-accent hover:underline"
+                className="text-[var(--color-accent)] hover:underline"
               >
                 Learn more
               </Link>

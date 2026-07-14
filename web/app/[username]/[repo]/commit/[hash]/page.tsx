@@ -10,24 +10,24 @@ export default async function CommitPage({
   const diff = await getDiff(username, repo, hash);
 
   const getLineClass = (line: string) => {
-    if (line.startsWith("+++") || line.startsWith("---")) return "text-sky-400";
-    if (line.startsWith("diff --git")) return "text-sky-300 font-semibold";
-    if (line.startsWith("@@")) return "text-amber-300 bg-amber-950/20";
-    if (line.startsWith("+")) return "text-green-400 bg-green-950/40";
-    if (line.startsWith("-")) return "text-red-400 bg-red-950/40";
+    if (line.startsWith("+++") || line.startsWith("---")) return "text-[var(--color-info)]";
+    if (line.startsWith("diff --git")) return "text-[var(--color-info)] font-semibold";
+    if (line.startsWith("@@")) return "text-[var(--color-warning)] bg-[var(--color-warning-muted)]";
+    if (line.startsWith("+")) return "text-[var(--color-success)] bg-[var(--color-success-muted)]";
+    if (line.startsWith("-")) return "text-[var(--color-error)] bg-[var(--color-error-muted)]";
     return "text-base";
   };
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case "added":
-        return "bg-green-600/20 text-green-400 border-green-600/30";
+        return "bg-[var(--color-success-muted)] text-[var(--color-success)] border-[var(--color-success)]/30";
       case "deleted":
-        return "bg-red-600/20 text-red-400 border-red-600/30";
+        return "bg-[var(--color-error-muted)] text-[var(--color-error)] border-[var(--color-error)]/30";
       case "renamed":
-        return "bg-blue-600/20 text-blue-400 border-blue-600/30";
+        return "bg-[var(--color-info-muted)] text-[var(--color-info)] border-[var(--color-info)]/30";
       default:
-        return "bg-amber-600/20 text-amber-400 border-amber-600/30";
+        return "bg-[var(--color-warning-muted)] text-[var(--color-warning)] border-[var(--color-warning)]/30";
     }
   };
 
@@ -100,9 +100,9 @@ export default async function CommitPage({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-green-400 font-mono">+{diff.additions}</span>
+            <span className="text-[var(--color-success)] font-mono">+{diff.additions}</span>
             <span className="text-muted">/</span>
-            <span className="text-red-400 font-mono">-{diff.deletions}</span>
+            <span className="text-[var(--color-error)] font-mono">-{diff.deletions}</span>
           </div>
         </div>
       </div>
@@ -133,10 +133,10 @@ export default async function CommitPage({
                 </div>
                 <div className="flex items-center gap-2 text-xs font-mono flex-shrink-0 ml-4">
                   {file.additions > 0 && (
-                    <span className="text-green-400">+{file.additions}</span>
+                    <span className="text-[var(--color-success)]">+{file.additions}</span>
                   )}
                   {file.deletions > 0 && (
-                    <span className="text-red-400">-{file.deletions}</span>
+                    <span className="text-[var(--color-error)]">-{file.deletions}</span>
                   )}
                 </div>
               </div>

@@ -1,8 +1,10 @@
 import { getCommits } from "@/lib/api";
 import Link from "next/link";
+import CommitAuthor from "@/components/CommitAuthor";
 
 export default async function CommitsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     username: string;
@@ -10,15 +12,15 @@ export default async function CommitsPage({
     ref: string;
     path?: string[];
   }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { username, repo, ref: refParam, path: pathSegments } = await params;
-  const fullPath = [
-    decodeURIComponent(refParam),
-    ...(pathSegments || []).map((p) => decodeURIComponent(p)),
-  ].join("/");
+  const { ref: queryRef } = await searchParams;
+  
+  // Support ref as query parameter for branch names with /
+  const ref = (typeof queryRef === "string" ? queryRef : null) || refParam;
+  const path = (pathSegments || []).map((p) => decodeURIComponent(p)).join("/");
 
-  let ref = "";
-  let path = "";
   let commits: Array<{
     hash: string;
     short_hash: string;
@@ -34,9 +36,7 @@ export default async function CommitsPage({
   let failed = false;
 
   try {
-    const data = await getCommits(username, repo, fullPath);
-    ref = data.ref;
-    path = data.path;
+    const data = await getCommits(username, repo, ref, path);
     commits = data.commits || [];
   } catch {
     failed = true;
@@ -48,11 +48,14 @@ export default async function CommitsPage({
         <div className="px-4 py-3 border-b border-base">
           <span className="font-semibold text-base">Commits</span>
         </div>
-        <div className="p-4 text-base">
+          <div className="p-4 text-base">
           Unable to load commits.
           <div className="mt-2">
             <Link
-              href={`/${username}/${repo}/tree/${refParam}`}
+              href={ref.includes("/") 
+                ? `/${username}/${repo}/tree/_?ref=${encodeURIComponent(ref)}`
+                : `/${username}/${repo}/tree/${ref}`
+              }
               className="text-accent hover:underline"
             >
               Browse files
@@ -97,7 +100,7 @@ export default async function CommitsPage({
           </>
         )}
       </div>
-      <div className="divide-y divide-(--border-base)">
+      <div className="divide-y divide-[var(--color-border)]">
         {commits.map((commit) => (
           <div
             key={commit.hash}
@@ -108,7 +111,7 @@ export default async function CommitsPage({
                 {commit.message}
               </p>
               <div className="flex items-center gap-2 mt-1 text-xs text-muted">
-                <span className="font-medium text-base">{commit.author}</span>
+                <CommitAuthor author={commit.author} authorEmail={commit.author_email} />
                 <span>
                   committed on{" "}
                   {new Date(commit.author_date).toLocaleDateString()}

@@ -14,6 +14,9 @@ import {
   formatNextRunTime,
   validateCronExpression,
 } from "@/lib/cron-utils";
+import MirrorSyncButton from "@/components/MirrorSyncButton";
+import Alert from "@/components/ui/Alert";
+import Button from "@/components/ui/Button";
 import type {
   MirrorSettingsResponse,
   UpdateMirrorSettingsRequest,
@@ -165,16 +168,10 @@ export default function MirrorSettingsPage() {
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit} className="space-y-8">
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-md text-sm">
-            {error}
-          </div>
-        )}
+        {error && <Alert type="error">{error}</Alert>}
 
         {success && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-md text-sm">
-            Mirror settings updated successfully!
-          </div>
+          <Alert type="success">Mirror settings updated successfully!</Alert>
         )}
 
         {/* Enable Mirror */}
@@ -205,6 +202,18 @@ export default function MirrorSettingsPage() {
 
         {formData.mirror_enabled && (
           <>
+            {/* Sync Now */}
+            <div className="border border-base rounded-md p-4 bg-panel">
+              <MirrorSyncButton
+                owner={username}
+                repo={repoName}
+                mirrorEnabled={formData.mirror_enabled}
+                syncStatus={settings?.sync_status}
+                lastSyncedAt={settings?.last_synced_at}
+                onSyncComplete={loadSettings}
+              />
+            </div>
+
             {/* Mirror Direction */}
             <div>
               <label
@@ -248,7 +257,7 @@ export default function MirrorSettingsPage() {
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-md shadow-sm bg-panel text-base focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent ${
                   !validateCronExpression(formData.sync_schedule)
-                    ? "border-red-500"
+                    ? "border-[var(--color-error)]"
                     : "border-base"
                 }`}
                 placeholder="0 */1 * * *"
@@ -256,7 +265,7 @@ export default function MirrorSettingsPage() {
               <div className="mt-2 space-y-1">
                 {validateCronExpression(formData.sync_schedule) ? (
                   <>
-                    <p className="text-sm text-green-600 dark:text-green-400">
+                    <p className="text-sm text-[var(--color-success)]">
                       ✓ Valid: {describeCronExpression(formData.sync_schedule)}
                     </p>
                     {(() => {
@@ -270,7 +279,7 @@ export default function MirrorSettingsPage() {
                     })()}
                   </>
                 ) : (
-                  <p className="text-sm text-red-600 dark:text-red-400">
+                  <p className="text-sm text-[var(--color-error)]">
                     ✗ Invalid cron expression
                   </p>
                 )}
@@ -322,7 +331,7 @@ export default function MirrorSettingsPage() {
                     htmlFor="upstream_url"
                     className="block text-sm font-medium text-base"
                   >
-                    Source URL <span className="text-red-500">*</span>
+                    Source URL <span className="text-[var(--color-error)]">*</span>
                   </label>
                   <input
                     id="upstream_url"
@@ -394,7 +403,7 @@ export default function MirrorSettingsPage() {
                     htmlFor="downstream_url"
                     className="block text-sm font-medium text-base"
                   >
-                    Destination URL <span className="text-red-500">*</span>
+                    Destination URL <span className="text-[var(--color-error)]">*</span>
                   </label>
                   <input
                     id="downstream_url"
@@ -462,11 +471,11 @@ export default function MirrorSettingsPage() {
                     <span
                       className={
                         settings.sync_status === "success"
-                          ? "text-green-500"
+                          ? "text-[var(--color-success)]"
                           : settings.sync_status === "failed"
-                            ? "text-red-500"
+                            ? "text-[var(--color-error)]"
                             : settings.sync_status === "syncing"
-                              ? "text-blue-500"
+                              ? "text-[var(--color-info)]"
                               : "text-muted"
                       }
                     >
@@ -498,7 +507,7 @@ export default function MirrorSettingsPage() {
                     </div>
                   )}
                   {settings.sync_error && (
-                    <div className="mt-2 text-xs text-red-500">
+                    <div className="mt-2 text-xs text-[var(--color-error)]">
                       Error: {settings.sync_error}
                     </div>
                   )}
@@ -510,13 +519,9 @@ export default function MirrorSettingsPage() {
 
         {/* Submit Button */}
         <div className="flex items-center justify-end pt-4 border-t border-base">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-accent hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button type="submit" loading={saving}>
             {saving ? "Saving..." : "Save Changes"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

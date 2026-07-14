@@ -1,5 +1,6 @@
 import { getBranches, getCommits } from "@/lib/api";
 import Link from "next/link";
+import CommitAuthor from "@/components/CommitAuthor";
 
 export default async function CommitsIndexPage({
   params,
@@ -59,7 +60,7 @@ export default async function CommitsIndexPage({
           {ref}
         </span>
       </div>
-      <div className="divide-y divide-(--border-base)">
+      <div className="divide-y divide-[var(--color-border)]">
         {commits.map((commit) => (
           <div
             key={commit.hash}
@@ -70,7 +71,7 @@ export default async function CommitsIndexPage({
                 {commit.message}
               </p>
               <div className="flex items-center gap-2 mt-1 text-xs text-muted">
-                <span className="font-medium text-base">{commit.author}</span>
+                <CommitAuthor author={commit.author} authorEmail={commit.author_email} />
                 <span>
                   committed on{" "}
                   {new Date(commit.author_date).toLocaleDateString()}

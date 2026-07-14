@@ -7,40 +7,44 @@ export default function BranchSelector({ branches }: { branches: Branch[] }) {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const currentRef = (params.ref as string) || 'HEAD';
+  const rawRef = params.ref ? decodeURIComponent(params.ref as string) : '';
+  
+  // If no ref in URL (repo root page), find the default branch
+  const defaultBranch = branches.find(b => b.is_head)?.name || branches[0]?.name || 'main';
+  const currentRef = rawRef || defaultBranch;
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newRef = e.target.value;
-    // Replace the current ref in the path with the new ref
-    // Path structure: /[username]/[repo]/tree/[ref]/...
-    // Or /[username]/[repo]/blob/[ref]/...
-    // Or /[username]/[repo]/commits/[ref]
-    
-    // Simple heuristic: split by ref and join? 
-    // This is tricky because ref might be part of path? No, ref is a segment.
-    // Let's assume standard routes.
-    
     const parts = pathname.split('/');
+    const action = parts[3] || 'tree';
+    
+    // For branches with / in the name, use query params for commits
+    // because Next.js route params can't handle / in [ref]
+    if (newRef.includes('/') && (action === 'commits' || action === 'compare')) {
+      router.push(`/${params.username}/${params.repo}/${action}?ref=${encodeURIComponent(newRef)}`);
+      return;
+    }
+    
     // ['', username, repo, action, ref, ...path]
     if (parts.length >= 5) {
-      parts[4] = newRef;
+      parts[4] = encodeURIComponent(newRef);
       router.push(parts.join('/'));
     } else {
-      // Maybe root repo page which defaults to default branch?
-      // Redirect to tree view with new branch
-      router.push(`/${params.username}/${params.repo}/tree/${newRef}`);
+      // Root repo page - navigate to tree view
+      router.push(`/${params.username}/${params.repo}/tree/${encodeURIComponent(newRef)}`);
     }
   };
 
   return (
-    <div className="relative inline-block text-left">
+    <div className="relative inline-block text-left max-w-[300px]">
       <select 
-        value={decodeURIComponent(currentRef)}
+        value={currentRef}
         onChange={handleChange}
-        className="block appearance-none w-full bg-panel border border-base px-4 py-2 pr-8 rounded leading-tight text-base"
+        className="block appearance-none w-full bg-[var(--color-bg-panel)] border border-[var(--color-border)] px-3 py-1.5 pr-8 rounded text-sm text-[var(--color-text-primary)] truncate"
+        title={currentRef}
       >
         {branches.map((b) => (
-          <option key={b.name} value={b.name} className="bg-panel text-base">
+          <option key={b.name} value={b.name} className="bg-[var(--color-bg-panel)] text-[var(--color-text-primary)]">
             {b.name}
           </option>
         ))}

@@ -89,7 +89,7 @@ export function CodeViewer({
   const lines = useMemo(() => content.split("\n"), [content]);
 
   return (
-    <div className="overflow-x-auto text-sm font-mono leading-6 bg-panel">
+    <div className="overflow-x-auto text-sm font-mono leading-6 bg-[var(--color-bg-panel)]">
       <table className="w-full border-collapse">
         <tbody>
           {lines.map((line, i) => {
@@ -105,11 +105,11 @@ export function CodeViewer({
             }
             return (
               <tr key={i}>
-                <td className="w-12 text-right select-none text-muted bg-panel pr-4 border-r border-base py-0.5">
+                <td className="w-12 text-right select-none text-[var(--color-text-muted)] bg-[var(--color-bg-panel)] pr-4 border-r border-[var(--color-border)] py-0.5">
                   {i + 1}
                 </td>
                 <td
-                  className="pl-4 whitespace-pre text-base py-0.5"
+                  className="pl-4 whitespace-pre text-[var(--color-text-primary)] py-0.5"
                   dangerouslySetInnerHTML={{ __html: highlighted || line }}
                 />
               </tr>

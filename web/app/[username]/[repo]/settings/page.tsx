@@ -10,6 +10,9 @@ import {
   getRepositoryStats,
 } from "@/lib/api";
 import { RepoResponse, RepoStats } from "@/lib/types";
+import Alert from "@/components/ui/Alert";
+import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
 
 export default function RepositorySettingsPage() {
   const router = useRouter();
@@ -138,17 +141,9 @@ export default function RepositorySettingsPage() {
 
   return (
     <div className="space-y-8">
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-md text-sm">
-          {error}
-        </div>
-      )}
+      {error && <Alert type="error">{error}</Alert>}
 
-      {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-md text-sm">
-          {success}
-        </div>
-      )}
+      {success && <Alert type="success">{success}</Alert>}
 
       {/* General Settings Form */}
       <form onSubmit={handleSave} className="border border-base rounded-md">
@@ -220,20 +215,16 @@ export default function RepositorySettingsPage() {
         </div>
 
         <div className="px-4 py-3 border-t border-base bg-panel">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button type="submit" loading={saving}>
             {saving ? "Saving..." : "Save changes"}
-          </button>
+          </Button>
         </div>
       </form>
 
       {/* Danger Zone */}
-      <div className="border border-red-300 dark:border-red-800 rounded-md">
-        <div className="px-4 py-3 border-b border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-          <h3 className="font-medium text-red-600 dark:text-red-400">
+      <div className="border border-[var(--color-error)] rounded-md">
+        <div className="px-4 py-3 border-b border-[var(--color-error)] bg-[var(--color-error-muted)]">
+          <h3 className="font-medium text-[var(--color-error)]">
             Danger Zone
           </h3>
         </div>
@@ -242,80 +233,81 @@ export default function RepositorySettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-medium text-base">Delete this repository</h4>
-              <p className="text-sm text-muted mt-1">
+              <p className="text-sm text-[var(--color-text-muted)] mt-1">
                 Once you delete a repository, there is no going back. Please be
                 certain.
               </p>
             </div>
-            <button
+            <Button
               type="button"
+              variant="danger"
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 py-2 border border-red-300 dark:border-red-700 rounded-md text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
               Delete this repository
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-panel border border-base rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-base mb-4">
-              Are you absolutely sure?
-            </h3>
-            <p className="text-sm text-muted mb-4">
-              This action <strong>cannot</strong> be undone. This will
-              permanently delete the{" "}
-              <strong>
-                {username}/{repo}
-              </strong>{" "}
-              repository, including all branches, tags, and commits.
-            </p>
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeleteConfirmName("");
+        }}
+        title="Are you absolutely sure?"
+      >
+        <p className="text-sm text-[var(--color-text-muted)] mb-4">
+          This action <strong>cannot</strong> be undone. This will
+          permanently delete the{" "}
+          <strong>
+            {username}/{repo}
+          </strong>{" "}
+          repository, including all branches, tags, and commits.
+        </p>
 
-            <div className="mb-4">
-              <label
-                htmlFor="confirmName"
-                className="block text-sm font-medium text-base mb-1"
-              >
-                Please type <strong>{repo}</strong> to confirm.
-              </label>
-              <input
-                id="confirmName"
-                type="text"
-                value={deleteConfirmName}
-                onChange={(e) => setDeleteConfirmName(e.target.value)}
-                className="block w-full px-3 py-2 border border-base rounded-md shadow-sm bg-panel text-base focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder={repo}
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteConfirmName("");
-                }}
-                className="px-4 py-2 border border-base rounded-md text-sm font-medium text-base hover:bg-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting || deleteConfirmName !== repo}
-                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deleting
-                  ? "Deleting..."
-                  : "I understand, delete this repository"}
-              </button>
-            </div>
-          </div>
+        <div className="mb-4">
+          <label
+            htmlFor="confirmName"
+            className="block text-sm font-medium text-[var(--color-text-primary)] mb-1"
+          >
+            Please type <strong>{repo}</strong> to confirm.
+          </label>
+          <input
+            id="confirmName"
+            type="text"
+            value={deleteConfirmName}
+            onChange={(e) => setDeleteConfirmName(e.target.value)}
+            className="block w-full px-3 py-2 border border-[var(--color-border)] rounded-md shadow-sm bg-[var(--color-bg-panel)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error)] focus:border-transparent"
+            placeholder={repo}
+          />
         </div>
-      )}
+
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setShowDeleteConfirm(false);
+              setDeleteConfirmName("");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={handleDelete}
+            loading={deleting}
+            disabled={deleteConfirmName !== repo}
+          >
+            {deleting
+              ? "Deleting..."
+              : "I understand, delete this repository"}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

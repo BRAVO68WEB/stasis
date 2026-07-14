@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { storeAuthToken, storeUserInfo } from "@/lib/api";
 import { UserInfo } from "@/lib/types";
+import { Button, Alert } from "@/components/ui";
 
 function OIDCCallbackContent() {
   const searchParams = useSearchParams();
@@ -32,7 +33,6 @@ function OIDCCallbackContent() {
         // Parse the URL fragment (hash) for token and user data
         // The backend redirects with: /auth/callback#token=xyz&user=base64encodedJSON
         const hash = window.location.hash;
-        console.log("Callback hash:", hash);
 
         if (hash && hash.length > 1) {
           const hashContent = hash.substring(1); // Remove the leading #
@@ -40,16 +40,9 @@ function OIDCCallbackContent() {
           const tokenFromHash = hashParams.get("token");
           const userBase64 = hashParams.get("user");
 
-          console.log(
-            "Token from hash:",
-            tokenFromHash ? "present" : "missing",
-          );
-          console.log("User from hash:", userBase64 ? "present" : "missing");
-
           if (tokenFromHash) {
             // Store the token in cookie
             storeAuthToken(tokenFromHash);
-            console.log("Token stored in cookie");
 
             // If we have user info, store it as well
             if (userBase64) {
@@ -62,7 +55,6 @@ function OIDCCallbackContent() {
                 const userJSON = atob(paddedBase64);
                 const userInfo: UserInfo = JSON.parse(userJSON);
                 storeUserInfo(userInfo);
-                console.log("User info stored:", userInfo.username);
               } catch (e) {
                 console.warn("Failed to parse user info from callback:", e);
                 // Continue anyway - the user info can be fetched later
@@ -85,7 +77,6 @@ function OIDCCallbackContent() {
         const state = searchParams.get("state");
 
         if (code && state) {
-          console.log("Processing code/state flow");
           // The backend handles the callback at /api/v1/auth/oidc/callback
           // If we're here with code/state, we need to call the backend to exchange it
           try {
@@ -147,8 +138,8 @@ function OIDCCallbackContent() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-muted">Completing authentication...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-accent)] mx-auto"></div>
+          <p className="mt-4 text-[var(--color-text-muted)]">Completing authentication...</p>
         </div>
       </div>
     );
@@ -159,36 +150,35 @@ function OIDCCallbackContent() {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="max-w-md w-full space-y-8">
           <div>
-            <h2 className="mt-6 text-center text-3xl font-bold text-base">
+            <h2 className="mt-6 text-center text-3xl font-bold text-[var(--color-text-primary)]">
               Authentication Failed
             </h2>
           </div>
 
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-md text-sm">
+          <Alert type="error">
             <p className="font-medium">Error</p>
             <p className="mt-1">{error}</p>
-          </div>
+          </Alert>
 
           <div className="text-center">
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Back to Login
+            <Link href="/auth/login">
+              <Button variant="primary" size="md">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
+                </svg>
+                Back to Login
+              </Button>
             </Link>
           </div>
         </div>
@@ -203,8 +193,8 @@ function CallbackLoadingFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-muted">Loading...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-accent)] mx-auto"></div>
+        <p className="mt-4 text-[var(--color-text-muted)]">Loading...</p>
       </div>
     </div>
   );
