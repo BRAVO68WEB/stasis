@@ -6,7 +6,7 @@ WORKDIR /app
 # Copy package files
 COPY web/package.json web/bun.lock* web/package-lock.json* web/yarn.lock* web/pnpm-lock.yaml* ./
 
-# Install dependencies using available package manager
+# Install dependencies
 RUN bun install
 
 COPY web/ .

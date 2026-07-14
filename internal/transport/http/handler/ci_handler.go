@@ -17,17 +17,19 @@ import (
 
 // CIHandler handles CI-related HTTP requests
 type CIHandler struct {
-	ciService *service.CIService
-	repoRepo  repository.RepoRepository
-	log       *logger.Logger
+	ciService     *service.CIService
+	repoRepo      repository.RepoRepository
+	log           *logger.Logger
+	webhookSecret string
 }
 
 // NewCIHandler creates a new CI handler
-func NewCIHandler(ciService *service.CIService, repoRepo repository.RepoRepository) *CIHandler {
+func NewCIHandler(ciService *service.CIService, repoRepo repository.RepoRepository, webhookSecret string) *CIHandler {
 	return &CIHandler{
-		ciService: ciService,
-		repoRepo:  repoRepo,
-		log:       logger.Get(),
+		ciService:     ciService,
+		repoRepo:      repoRepo,
+		log:           logger.Get(),
+		webhookSecret: webhookSecret,
 	}
 }
 
@@ -50,7 +52,11 @@ func (h *CIHandler) TriggerJob(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	currentUser := user.(*models.User)
+	currentUser, ok := user.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
 
 	// Get repository
 	repo, err := h.repoRepo.FindByOwnerUsernameAndName(c.Request.Context(), owner, repoName)
@@ -59,8 +65,8 @@ func (h *CIHandler) TriggerJob(c *gin.Context) {
 		return
 	}
 
-	// Check permissions (owner or collaborator)
-	if repo.OwnerID != currentUser.ID {
+	// Check permissions (owner or admin)
+	if repo.OwnerID != currentUser.ID && !currentUser.IsAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
@@ -326,7 +332,11 @@ func (h *CIHandler) CancelJob(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	currentUser := user.(*models.User)
+	currentUser, ok := user.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
 
 	// Get repository
 	repo, err := h.repoRepo.FindByOwnerUsernameAndName(c.Request.Context(), owner, repoName)
@@ -335,8 +345,8 @@ func (h *CIHandler) CancelJob(c *gin.Context) {
 		return
 	}
 
-	// Check permissions
-	if repo.OwnerID != currentUser.ID {
+	// Check permissions (owner or admin)
+	if repo.OwnerID != currentUser.ID && !currentUser.IsAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
@@ -376,7 +386,11 @@ func (h *CIHandler) RetryJob(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	currentUser := user.(*models.User)
+	currentUser, ok := user.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
 
 	// Get repository
 	repo, err := h.repoRepo.FindByOwnerUsernameAndName(c.Request.Context(), owner, repoName)
@@ -385,8 +399,8 @@ func (h *CIHandler) RetryJob(c *gin.Context) {
 		return
 	}
 
-	// Check permissions
-	if repo.OwnerID != currentUser.ID {
+	// Check permissions (owner or admin)
+	if repo.OwnerID != currentUser.ID && !currentUser.IsAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
@@ -537,6 +551,15 @@ func (h *CIHandler) DownloadArtifact(c *gin.Context) {
 
 // Helper methods
 
+// validateWebhookSecret returns true if secret is empty (not configured) or the
+// X-Webhook-Secret header matches the configured secret.
+func validateWebhookSecret(c *gin.Context, secret string) bool {
+	if secret == "" {
+		return true
+	}
+	return c.GetHeader("X-Webhook-Secret") == secret
+}
+
 func (h *CIHandler) formatJobResponse(job *service.CIJob) gin.H {
 	response := gin.H{
 		"id":            job.ID,
@@ -610,6 +633,11 @@ func (h *CIHandler) sendSSE(w http.ResponseWriter, eventType string, data interf
 // This is kept for backwards compatibility but logs are now fetched directly
 // POST /api/v1/ci/jobs/:job_id/logs
 func (h *CIHandler) ReceiveLogs(c *gin.Context) {
+	if !validateWebhookSecret(c, h.webhookSecret) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid webhook secret"})
+		return
+	}
+
 	jobIDStr := c.Param("job_id")
 
 	jobID, err := uuid.Parse(jobIDStr)
@@ -645,6 +673,11 @@ func (h *CIHandler) ReceiveLogs(c *gin.Context) {
 // CompleteJob handles job completion webhook from CI runner
 // POST /api/v1/ci/jobs/:job_id/complete
 func (h *CIHandler) CompleteJob(c *gin.Context) {
+	if !validateWebhookSecret(c, h.webhookSecret) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid webhook secret"})
+		return
+	}
+
 	jobIDStr := c.Param("job_id")
 
 	jobID, err := uuid.Parse(jobIDStr)
@@ -696,6 +729,11 @@ func (h *CIHandler) CompleteJob(c *gin.Context) {
 // WebhookJobUpdate handles generic job update webhook from CI runner
 // POST /api/v1/ci/webhook
 func (h *CIHandler) WebhookJobUpdate(c *gin.Context) {
+	if !validateWebhookSecret(c, h.webhookSecret) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid webhook secret"})
+		return
+	}
+
 	var update struct {
 		JobID  uuid.UUID `json:"job_id"`
 		Status string    `json:"status"`

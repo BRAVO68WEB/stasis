@@ -1,6 +1,6 @@
 module github.com/bravo68web/stasis
 
-go 1.25.3
+go 1.24.6
 
 require (
 	ariga.io/atlas-go-sdk v0.7.2
@@ -19,6 +19,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/viper v1.21.0
 	github.com/urfave/cli/v3 v3.6.1
 	go.opentelemetry.io/otel v1.39.0
@@ -160,7 +161,6 @@ require (
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.57.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect

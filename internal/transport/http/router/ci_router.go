@@ -1,6 +1,11 @@
 package router
 
 import (
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+
 	"github.com/bravo68web/stasis/internal/application/dto"
 	"github.com/bravo68web/stasis/internal/transport/http/handler"
 	"github.com/bravo68web/stasis/internal/transport/http/middleware"
@@ -13,7 +18,7 @@ func (r *Router) ciRouter() {
 	ciService := r.Deps.CIService
 
 	// Initialize CI handler
-	ciHandler := handler.NewCIHandler(ciService, r.Deps.RepoService.GetRepoRepository())
+	ciHandler := handler.NewCIHandler(ciService, r.Deps.RepoService.GetRepoRepository(), r.server.Config.CI.WebhookSecret)
 
 	// Initialize auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(r.Deps.AuthService)
@@ -271,6 +276,7 @@ func (r *Router) ciRouter() {
 	// ========================================
 	// These routes are called by the CI runner to report status and logs
 	ciInternalGroup := r.server.Group("/api/v1/ci")
+	ciInternalGroup.Use(RequireServiceToken(r.server.Config.CI.APIKey))
 	{
 		// Receive logs from CI runner
 		// The CI runner authenticates using Bearer token or API key
@@ -281,5 +287,40 @@ func (r *Router) ciRouter() {
 
 		// Webhook for job status updates from CI runner
 		ciInternalGroup.POST("/webhook/job-update", ciHandler.WebhookJobUpdate)
+	}
+}
+
+// RequireServiceToken returns a gin middleware that validates a Bearer token
+// against the configured CI API key. Requests with a missing or invalid token
+// are rejected with 401 Unauthorized.
+func RequireServiceToken(apiKey string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if apiKey == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error":   "unauthorized",
+				"message": "CI service token not configured",
+			})
+			return
+		}
+
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error":   "unauthorized",
+				"message": "missing or invalid Authorization header",
+			})
+			return
+		}
+
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if token != apiKey {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error":   "unauthorized",
+				"message": "invalid service token",
+			})
+			return
+		}
+
+		c.Next()
 	}
 }

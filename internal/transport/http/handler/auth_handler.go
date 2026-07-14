@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,7 +16,6 @@ import (
 	"github.com/bravo68web/stasis/internal/domain/models"
 	domainservice "github.com/bravo68web/stasis/internal/domain/service"
 	"github.com/bravo68web/stasis/internal/transport/http/middleware"
-	apperrors "github.com/bravo68web/stasis/pkg/errors"
 	"github.com/bravo68web/stasis/pkg/logger"
 )
 
@@ -89,14 +89,15 @@ func (h *AuthHandler) OIDCLogin(c *gin.Context) {
 	}
 
 	// Store state in a secure HTTP-only cookie
+	secure := strings.HasPrefix(h.config.OIDC.RedirectURL, "https://")
 	c.SetCookie(
 		oidcStateCookie,
 		state,
 		int(oidcStateCookieExp.Seconds()),
 		"/",
-		"",    // domain
-		false, // secure (set to true in production with HTTPS)
-		true,  // httpOnly
+		"",     // domain
+		secure, // secure flag based on redirect URL scheme
+		true,   // httpOnly
 	)
 
 	h.log.Info("Redirecting user to OIDC provider",
@@ -164,7 +165,8 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 	}
 
 	// Clear the state cookie
-	c.SetCookie(oidcStateCookie, "", -1, "/", "", false, true)
+	secure := strings.HasPrefix(h.config.OIDC.RedirectURL, "https://")
+	c.SetCookie(oidcStateCookie, "", -1, "/", "", secure, true)
 
 	h.log.Debug("Processing OIDC callback")
 
@@ -174,7 +176,7 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 		h.log.Error("OIDC callback handling failed",
 			logger.Error(err),
 		)
-		h.handleError(c, err)
+		handleError(c, h.log, err)
 		return
 	}
 
@@ -201,7 +203,7 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 			h.log.Error("Failed to marshal user info for redirect",
 				logger.Error(err),
 			)
-			h.handleError(c, err)
+			handleError(c, h.log, err)
 			return
 		}
 		userBase64 := base64.URLEncoding.EncodeToString(userJSON)
@@ -316,57 +318,7 @@ func (h *AuthHandler) GetOIDCConfig(c *gin.Context) {
 	})
 }
 
-// handleError handles errors and returns appropriate HTTP responses
-func (h *AuthHandler) handleError(c *gin.Context, err error) {
-	var appErr *apperrors.AppError
-	if ok := apperrors.IsNotFound(err); ok {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":   "not_found",
-			"message": err.Error(),
-		})
-		return
-	}
 
-	if ok := apperrors.IsUnauthorized(err); ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": err.Error(),
-		})
-		return
-	}
-
-	if ok := apperrors.IsForbidden(err); ok {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error":   "forbidden",
-			"message": err.Error(),
-		})
-		return
-	}
-
-	if ok := apperrors.IsConflict(err); ok {
-		c.JSON(http.StatusConflict, gin.H{
-			"error":   "conflict",
-			"message": err.Error(),
-		})
-		return
-	}
-
-	// Check for AppError
-	if e, ok := err.(*apperrors.AppError); ok {
-		appErr = e
-		c.JSON(appErr.HTTPStatus(), gin.H{
-			"error":   "error",
-			"message": appErr.Message,
-		})
-		return
-	}
-
-	// Default to internal server error
-	c.JSON(http.StatusInternalServerError, gin.H{
-		"error":   "internal_error",
-		"message": "An unexpected error occurred",
-	})
-}
 
 // Ensure AuthHandler implements all required methods
 var _ interface {
