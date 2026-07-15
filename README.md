@@ -1,6 +1,20 @@
 # Stasis
 
-A self-hosted Git server implementation with SSH and HTTP protocol support, built with Go.
+A self-hosted Git server implementation with SSH and HTTP protocol support, built with Go. Features a GitHub-inspired web interface with user profiles, contribution graphs, and social links.
+
+## Features
+
+- **Git Protocol**: Full SSH and Smart HTTP support for clone, push, pull
+- **Web Interface**: GitHub-inspired UI with Dracula theme
+- **User Profiles**: Bio, company, location, website, avatar, social links
+- **Social Links**: Auto-detected icons for GitHub, Twitter, LinkedIn, Mastodon, and 8+ platforms
+- **Mastodon Support**: Native `@user@instance` format for ActivityPub
+- **Contribution Graph**: GitHub-style heatmap with year selector
+- **Profile README**: Custom README from `.stasis` repository
+- **Linked Emails**: Map git commit emails to user profiles
+- **CI/CD**: Pluggable CI runner for automated builds
+- **Security**: Rate limiting, security headers, CORS, JWT auth
+- **OIDC**: OpenID Connect support for SSO
 
 ## High-Level Architecture
 
@@ -33,23 +47,22 @@ A self-hosted Git server implementation with SSH and HTTP protocol support, buil
               │                              │   │                           │
               │  ┌────────────────────────┐  │   │  • Dashboard              │
               │  │  HTTP Transport Layer  │  │   │  • Repository Browser     │
-              │  │  (Gin Framework)       │  │   │  • User Settings          │
-              │  ├────────────────────────┤  │   │  • SSH Key Management     │
-              │  │  Handlers:             │  │   │  • Auth (OAuth/OIDC)      │
-              │  │  • Auth Handler        │  │   │                           │
-              │  │  • Repo Handler        │  │   └───────────────────────────┘
-              │  │  • Git Handler         │  │
+              │  │  (Gin Framework)       │  │   │  • User Profiles          │
+              │  ├────────────────────────┤  │   │  • Contribution Graphs    │
+              │  │  Handlers:             │  │   │  • Settings               │
+              │  │  • Auth Handler        │  │   │  • SSH Key Management     │
+              │  │  • Repo Handler        │  │   │  • Auth (OAuth/OIDC)      │
+              │  │  • Git Handler         │  │   │                           │
+              │  │  • User Handler        │  │   └───────────────────────────┘
               │  │  • SSH Key Handler     │  │
               │  │  • Token Handler       │  │
               │  │  • CI Handler          │  │
-              │  │  • Health Handler      │  │
               │  └────────────────────────┘  │
               │                              │
               │  ┌────────────────────────┐  │
               │  │  SSH Transport Layer   │  │◄──── SSH (Port 2222)
               │  │  (Charm/Wish)          │  │      git-upload-pack
-              │  ├────────────────────────┤  │      git-receive-pack
-              │  │  • Public Key Auth     │  │
+              │  │  • Public Key Auth     │  │      git-receive-pack
               │  │  • Git Protocol Exec   │  │
               │  │  • CI Trigger on Push  │  │
               │  └────────────────────────┘  │
@@ -95,13 +108,8 @@ A self-hosted Git server implementation with SSH and HTTP protocol support, buil
               │  │  Storage Backends:     │  │
               │  │  • FilesystemStorage   │  │──────► Local Disk
               │  │  • S3Storage           │  │──────► S3/MinIO
-              │  ├────────────────────────┤  │
-              │  │  Observability:        │  │
-              │  │  • OpenTelemetry       │  │──────► OTEL Collector
-              │  │  • Structured Logging  │  │
               │  └────────────────────────┘  │
               └──────────────────────────────┘
-                              │
                               │
               ┌───────────────▼──────────────┐
               │         POSTGRESQL           │
@@ -119,157 +127,109 @@ A self-hosted Git server implementation with SSH and HTTP protocol support, buil
               └──────────────────────────────┘
 ```
 
-## Component Overview
-
-### Transport Layer
-
-| Component | Description |
-|-----------|-------------|
-| **HTTP API** | REST API built with Gin framework for web clients and API consumers |
-| **SSH Server** | SSH server using Charm/Wish for Git operations (clone, push, pull) |
-| **Git Protocol** | Smart HTTP protocol implementation for web-based Git operations |
-
-### Application Services
-
-| Service | Description |
-|---------|-------------|
-| **AuthService** | Handles authentication via SSH keys and HTTP tokens |
-| **RepoService** | Repository CRUD operations and access control |
-| **UserService** | User management and profile operations |
-| **SSHKeyService** | SSH public key management for authentication |
-| **TokenService** | API token generation and validation |
-| **CIService** | CI/CD job triggering and status management |
-| **OIDCService** | OpenID Connect integration for SSO |
-
-### Infrastructure
-
-| Component | Description |
-|-----------|-------------|
-| **PostgreSQL** | Primary database for users, repos, keys, tokens, and CI jobs |
-| **Filesystem Storage** | Local disk storage for Git repositories |
-| **S3 Storage** | Optional S3-compatible storage for repositories and artifacts |
-| **OpenTelemetry** | Distributed tracing and observability |
-
-## Data Flow
-
-### Git Clone (HTTP)
-```
-Client → NGINX → API (Git Handler) → GitProtocol → Filesystem → Response
-```
-
-### Git Push (SSH)
-```
-Client → SSH Server → Auth (Public Key) → GitProtocol → Filesystem → CI Trigger → Response
-```
-
-### Web UI Request
-```
-Browser → NGINX → Next.js → API Calls → API Server → PostgreSQL → Response
-```
-
-### CI Job Trigger
-```
-Git Push → SSH/HTTP Handler → CIService → External CI Runner → Job Status Updates
-```
-
-## Directory Structure
-
-```
-git-server-poc/
-├── cmd/
-│   ├── cli/              # CLI management tools
-│   ├── migrations/       # Database migration runner
-│   └── server/           # Main server entry point
-├── internal/
-│   ├── application/      # Application services
-│   │   ├── commands/     # Command handlers
-│   │   ├── dto/          # Data transfer objects
-│   │   └── service/      # Business logic services
-│   ├── config/           # Configuration loading
-│   ├── domain/           # Domain models and interfaces
-│   │   ├── models/       # Entity definitions
-│   │   ├── repository/   # Repository interfaces
-│   │   └── service/      # Service interfaces
-│   ├── infrastructure/   # External integrations
-│   │   ├── database/     # Database connection
-│   │   ├── git/          # Git protocol implementation
-│   │   ├── otel/         # OpenTelemetry setup
-│   │   ├── repository/   # Repository implementations
-│   │   └── storage/      # Storage backends (FS/S3)
-│   ├── injectable/       # Dependency injection
-│   ├── server/           # Server initialization
-│   └── transport/        # Transport layer
-│       ├── http/         # HTTP handlers, middleware, routers
-│       └── ssh/          # SSH server implementation
-├── pkg/
-│   ├── errors/           # Error handling utilities
-│   └── logger/           # Structured logging
-├── web/                  # Next.js frontend application
-├── configs/              # Configuration files
-├── deploy/               # Deployment configurations (nginx, etc.)
-└── data/                 # Runtime data (repos, etc.)
-```
-
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - OAuth/OIDC login
-- `POST /api/auth/callback` - OAuth callback
-- `GET /api/auth/me` - Get current user
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/auth/oidc/login` | Initiate OIDC login |
+| GET | `/api/v1/auth/oidc/callback` | OIDC callback |
+| GET | `/api/v1/auth/me` | Get current user |
+| POST | `/api/v1/auth/logout` | Logout |
+
+### Users
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/users/:username` | Get user profile |
+| PUT | `/api/v1/users/username` | Update username |
+| PUT | `/api/v1/users/profile` | Update profile |
+| GET | `/api/v1/users/linked-emails` | Get linked emails |
+| PUT | `/api/v1/users/linked-emails` | Update linked emails |
+| GET | `/api/v1/users/social-links` | Get social links |
+| PUT | `/api/v1/users/social-links` | Update social links |
+| GET | `/api/v1/users/by-email` | Find user by email |
 
 ### Repositories
-- `GET /api/repos` - List repositories
-- `POST /api/repos` - Create repository
-- `GET /api/repos/:owner/:repo` - Get repository details
-- `DELETE /api/repos/:owner/:repo` - Delete repository
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/repos` | List repositories |
+| POST | `/api/v1/repos` | Create repository |
+| GET | `/api/v1/repos/:owner/:repo` | Get repository |
+| DELETE | `/api/v1/repos/:owner/:repo` | Delete repository |
+| GET | `/api/v1/repos/:owner/:repo/stats` | Get repo stats |
+| GET | `/api/v1/repos/:owner/:repo/branches` | List branches |
+| GET | `/api/v1/repos/:owner/:repo/tags` | List tags |
+| GET | `/api/v1/repos/:owner/:repo/commits` | List commits |
+| GET | `/api/v1/repos/:owner/:repo/contributors` | List contributors |
+| GET | `/api/v1/repos/:owner/:repo/activity` | Get activity data |
+| GET | `/api/v1/repos/:owner/:repo/file-commit` | Get file commit info |
 
 ### Git Protocol (Smart HTTP)
-- `GET /:owner/:repo/info/refs` - Advertise refs
-- `POST /:owner/:repo/git-upload-pack` - Fetch/Clone
-- `POST /:owner/:repo/git-receive-pack` - Push
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/:owner/:repo/info/refs` | Advertise refs |
+| POST | `/:owner/:repo/git-upload-pack` | Fetch/Clone |
+| POST | `/:owner/:repo/git-receive-pack` | Push |
 
 ### SSH Keys
-- `GET /api/ssh-keys` - List user's SSH keys
-- `POST /api/ssh-keys` - Add SSH key
-- `DELETE /api/ssh-keys/:id` - Remove SSH key
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/ssh-keys` | List SSH keys |
+| POST | `/api/v1/ssh-keys` | Add SSH key |
+| DELETE | `/api/v1/ssh-keys/:id` | Remove SSH key |
+
+### Tokens
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/tokens` | List tokens |
+| POST | `/api/v1/tokens` | Create token |
+| DELETE | `/api/v1/tokens/:id` | Revoke token |
 
 ### CI/CD
-- `GET /api/ci/jobs` - List CI jobs
-- `GET /api/ci/jobs/:id` - Get job details
-- `POST /api/ci/jobs/:id/logs` - Receive job logs
-- `PUT /api/ci/jobs/:id/status` - Update job status
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/ci/jobs` | List CI jobs |
+| GET | `/api/v1/ci/jobs/:id` | Get job details |
+| POST | `/api/v1/ci/jobs/:id/logs` | Receive job logs |
+| PUT | `/api/v1/ci/jobs/:id/status` | Update job status |
 
 ## Quick Start
 
 ### Prerequisites
 - Docker & Docker Compose
-- Go 1.21+ (for development)
-- Node.js 18+ (for frontend development)
+- Go 1.24+ (for development)
+- Bun or Node.js 18+ (for frontend development)
 
 ### Running with Docker Compose
 
 ```bash
+# Copy environment file
+cp configs/.env.example .env
+
+# Edit .env with your settings (STASIS_DB_PASSWORD is required)
+vim .env
+
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop services
-docker-compose down
+docker compose down
 ```
 
 ### Development
 
 ```bash
-# Install dependencies
-make setup
+# Install Go dependencies
+go mod download
 
-# Run API server (with hot reload)
-make dev
+# Run API server
+go run ./cmd/server
 
-# Run frontend
-cd web && npm run dev
+# Run frontend (in another terminal)
+cd web && bun install && bun run dev
 ```
 
 ### Configuration
@@ -278,11 +238,50 @@ Configuration is managed via `configs/config.yaml` and environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GITSERVER_DATABASE_HOST` | PostgreSQL host | `localhost` |
-| `GITSERVER_DATABASE_PORT` | PostgreSQL port | `5432` |
-| `GITSERVER_SERVER_PORT` | HTTP server port | `8080` |
-| `GITSERVER_SSH_PORT` | SSH server port | `2222` |
-| `GITSERVER_STORAGE_TYPE` | Storage backend (`filesystem`/`s3`) | `filesystem` |
+| `STASIS_DATABASE_HOST` | PostgreSQL host | `localhost` |
+| `STASIS_DATABASE_PORT` | PostgreSQL port | `5432` |
+| `STASIS_SERVER_PORT` | HTTP server port | `8080` |
+| `STASIS_SSH_PORT` | SSH server port | `2222` |
+| `STASIS_STORAGE_TYPE` | Storage backend (`filesystem`/`s3`) | `filesystem` |
+| `STASIS_OIDC_ENABLED` | Enable OIDC authentication | `false` |
+| `STASIS_OIDC_ISSUER_URL` | OIDC issuer URL | - |
+| `STASIS_OIDC_CLIENT_ID` | OIDC client ID | - |
+| `STASIS_OIDC_CLIENT_SECRET` | OIDC client secret | - |
+| `STASIS_OIDC_JWT_SECRET` | JWT signing secret (min 32 chars) | - |
+
+## User Profiles
+
+### Profile Fields
+- Display name
+- Bio (500 chars)
+- Company
+- Location
+- Website
+- Avatar URL
+- Social links (up to 4)
+
+### Social Links
+
+Supports auto-detected icons for:
+- GitHub (`github.com`)
+- Twitter/X (`twitter.com`, `x.com`)
+- LinkedIn (`linkedin.com`)
+- YouTube (`youtube.com`)
+- Twitch (`twitch.tv`)
+- Discord (`discord.gg`, `discord.com`)
+- Mastodon (`@user@instance` format)
+- Stack Overflow (`stackoverflow.com`)
+- DEV (`dev.to`)
+- Medium (`medium.com`)
+- Hashnode (`hashnode.dev`)
+
+### Profile README
+
+Create a repository named `.stasis` with a `README.md` to display a custom profile README on your profile page.
+
+### Linked Emails
+
+Link git commit email addresses to your profile. When a contributor's email matches, their profile is automatically linked in commit views.
 
 ## License
 
