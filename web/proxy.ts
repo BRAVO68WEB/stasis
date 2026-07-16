@@ -58,10 +58,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect to home if accessing auth routes while already authenticated
-  if (isAuthRoute && isAuthenticated) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  // Login page validates token server-side; middleware redirect would cause
+  // redirect loops when JWT expires but cookie persists
 
   // For authenticated requests, forward the auth token in headers for SSR API calls
   if (isAuthenticated) {

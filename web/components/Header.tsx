@@ -39,7 +39,9 @@ export default function Header() {
           // Update stored user info if it changed
           storeUserInfo(userData);
         } catch {
-          // Token might be invalid
+          // Token might be invalid or expired - clear cookies
+          // This prevents redirect loops when trying to re-login
+          logoutLocal();
           setIsLoggedIn(false);
           setUser(null);
         }
