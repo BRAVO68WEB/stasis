@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getOIDCConfig, initiateOIDCLogin, isAuthenticated } from "@/lib/api";
+import { getOIDCConfig, initiateOIDCLogin, isAuthenticated, getCurrentUser, logoutLocal } from "@/lib/api";
 import { Button, Alert } from "@/components/ui";
 
 export default function LoginPage() {
@@ -14,14 +14,21 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if already authenticated
-    if (isAuthenticated()) {
-      router.push("/");
-      return;
-    }
+    const checkAuthAndOIDC = async () => {
+      // Check if already authenticated with valid token
+      if (isAuthenticated()) {
+        try {
+          // Validate token is still valid by calling the API
+          await getCurrentUser();
+          router.push("/");
+          return;
+        } catch {
+          // Token is invalid or expired, clear it
+          logoutLocal();
+        }
+      }
 
-    // Check OIDC configuration
-    const checkOIDC = async () => {
+      // Check OIDC configuration
       try {
         const config = await getOIDCConfig();
         setOidcEnabled(config.oidc_enabled);
@@ -34,7 +41,7 @@ export default function LoginPage() {
       }
     };
 
-    checkOIDC();
+    checkAuthAndOIDC();
   }, [router]);
 
   const handleLogin = () => {
