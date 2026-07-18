@@ -1,0 +1,45 @@
+services:
+  stasis-aio:
+    image: stasis-all-in-one:test
+    container_name: stasis-aio-test
+    ports:
+      - "8080:80"
+      - "2222:2222"
+    environment:
+      - STASIS_DATABASE_HOST=postgres
+      - STASIS_DATABASE_PORT=5432
+      - STASIS_DATABASE_USER=stasis
+      - STASIS_DB_PASSWORD=stasis-test-password
+      - STASIS_DATABASE_DBNAME=stasis
+      - STASIS_DATABASE_SSLMODE=disable
+      - STASIS_SERVER_MODE=debug
+      - STASIS_OIDC_ENABLED=false
+    volumes:
+      - ./logs/stasis:/var/log/stasis
+      - ./logs/nginx:/var/log/nginx
+      - ./logs/supervisord:/var/log/supervisord
+      - stasis_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: stasis-postgres-test
+    environment:
+      POSTGRES_USER: stasis
+      POSTGRES_PASSWORD: stasis-test-password
+      POSTGRES_DB: stasis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stasis"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  stasis_data:

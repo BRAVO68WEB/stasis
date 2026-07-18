@@ -1,0 +1,152 @@
+# ============================================================
+# Stage 1: Build Go API
+# ============================================================
+FROM golang:1.24-alpine AS api-builder
+
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /src
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+# Copy source code
+COPY . .
+
+# Build the server binary
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /out/stasis-server ./cmd/server
+
+# ============================================================
+# Stage 2: Build Next.js Web Frontend
+# ============================================================
+FROM oven/bun:latest AS web-builder
+
+WORKDIR /app
+
+# Copy package files
+COPY web/package.json web/bun.lock* web/package-lock.json* web/yarn.lock* web/pnpm-lock.yaml* ./
+
+# Install dependencies
+RUN bun install
+
+# Copy source code
+COPY web/ .
+
+# Build arguments for Next.js
+ARG NEXT_PUBLIC_API_URL=/api
+ARG STASIS_SERVER_HOSTED_URL=http://localhost
+ARG STASIS_SSH_HOST_NAME=localhost:2222
+
+# Set environment variables for build
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV STASIS_SERVER_HOSTED_URL=${STASIS_SERVER_HOSTED_URL}
+ENV STASIS_SSH_HOST_NAME=${STASIS_SSH_HOST_NAME}
+
+# Build the application
+RUN bun run build
+
+# ============================================================
+# Stage 3: Final All-in-One Image
+# ============================================================
+FROM alpine:latest
+
+RUN apk add --no-cache \
+    ca-certificates \
+    git \
+    tzdata \
+    wget \
+    curl \
+    nginx \
+    supervisor \
+    bash \
+    nodejs \
+    logrotate
+
+# Install bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
+# Create necessary directories
+RUN mkdir -p \
+    /app \
+    /app/web \
+    /app/data/repos \
+    /app/configs \
+    /var/log/nginx \
+    /var/log/stasis \
+    /var/log/supervisord \
+    /var/run
+
+# Copy API binary from builder
+COPY --from=api-builder /out/stasis-server /usr/local/bin/stasis-server
+
+# Copy web frontend from builder
+COPY --from=web-builder /app/.next /app/web/.next
+COPY --from=web-builder /app/public /app/web/public
+COPY --from=web-builder /app/package.json /app/web/package.json
+COPY --from=web-builder /app/node_modules /app/web/node_modules
+COPY --from=web-builder /app/next.config.* /app/web/
+COPY --from=web-builder /app/lib /app/web/lib
+
+# Copy nginx configuration
+COPY deploy/nginx.aio.conf /etc/nginx/nginx.conf
+
+# Copy supervisord configuration
+COPY deploy/supervisord.conf /etc/supervisord.conf
+
+# Copy logrotate configuration
+COPY deploy/logrotate.conf /etc/logrotate.d/stasis
+
+# Copy default config
+COPY configs/config.yaml.example /app/configs/config.yaml
+
+# Install Atlas CLI for database migrations
+RUN curl -sSf https://atlasgo.sh | sh
+RUN if [ -f /root/.atlas/bin/atlas ]; then \
+        cp /root/.atlas/bin/atlas /usr/local/bin/atlas && \
+        chmod +x /usr/local/bin/atlas; \
+    elif [ -f /usr/local/bin/atlas ]; then \
+        chmod +x /usr/local/bin/atlas; \
+    else \
+        echo "ERROR: Atlas binary not found after installation" && exit 1; \
+    fi
+RUN /usr/local/bin/atlas version
+
+# Expose ports
+# 80 - nginx (HTTP)
+# 8080 - API (internal, proxied by nginx)
+# 2222 - SSH
+EXPOSE 80 2222
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD wget -qO- http://localhost/health || exit 1
+
+# Default environment variables
+ENV STASIS_DATABASE_HOST=localhost
+ENV STASIS_DATABASE_PORT=5432
+ENV STASIS_DATABASE_USER=stasis
+ENV STASIS_DB_PASSWORD=
+ENV STASIS_DATABASE_DBNAME=stasis
+ENV STASIS_DATABASE_SSLMODE=disable
+ENV STASIS_SERVER_HOST=0.0.0.0
+ENV STASIS_SERVER_PORT=8080
+ENV STASIS_SERVER_MODE=release
+ENV STASIS_SSH_HOST=0.0.0.0
+ENV STASIS_SSH_PORT=2222
+ENV STASIS_STORAGE_TYPE=filesystem
+ENV STASIS_STORAGE_BASE_PATH=/app/data/repos
+ENV STASIS_OIDC_ENABLED=false
+ENV STASIS_OIDC_ISSUER_URL=
+ENV STASIS_OIDC_CLIENT_ID=
+ENV STASIS_OIDC_CLIENT_SECRET=
+ENV STASIS_OIDC_REDIRECT_URL=http://localhost:8080/api/v1/auth/oidc/callback
+ENV STASIS_OIDC_JWT_SECRET=change-this-secret-in-production
+ENV STASIS_OIDC_FRONTEND_URL=http://localhost
+ENV STASIS_CI_API_KEY=
+
+# Start supervisord
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
