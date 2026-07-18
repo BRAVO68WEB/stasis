@@ -99,3 +99,6 @@ bin/
 *.prof
 *.cpu
 *.mem
+
+# Log files
+logs/
