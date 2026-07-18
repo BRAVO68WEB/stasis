@@ -7,17 +7,14 @@ export default async function BlamePage({
   params: Promise<{ username: string; repo: string; ref: string; path: string[] }>;
 }) {
   const { username, repo, ref: refParam, path: pathSegments } = await params;
-  const fullPath = [decodeURIComponent(refParam), ...(pathSegments || []).map(p => decodeURIComponent(p))].join('/');
+  const ref = decodeURIComponent(refParam);
+  const path = (pathSegments || []).map(p => decodeURIComponent(p)).join('/');
 
-  let ref = '';
-  let path = '';
   let blameData: Array<{ line_no: number; commit: string; author: string; date: string; content: string }> = [];
   let failed = false;
 
   try {
-    const data = await getBlame(username, repo, fullPath);
-    ref = data.ref;
-    path = data.path;
+    const data = await getBlame(username, repo, ref, path);
     blameData = data.blame || [];
   } catch {
     failed = true;

@@ -1,38 +1,500 @@
 @import "tailwindcss";
 
+/* ============================================
+   Design Token System — Dracula-inspired dark theme
+   ============================================ */
+
 :root {
-  --bg-base: #282a36;
-  --bg-panel: #1e1f29;
-  --border-base: #44475a;
-  --text-base: #f8f8f2;
-  --text-muted: #6272a4;
-  --accent: #bd93f9;
-  --accent-contrast: #1e1f29;
+  /* Surfaces */
+  --color-bg-base: #282a36;
+  --color-bg-panel: #1e1f29;
+  --color-bg-elevated: #343746;
+  --color-bg-hover: #44475a;
+
+  /* Text */
+  --color-text-primary: #f8f8f2;
+  --color-text-secondary: #bfbfe0;
+  --color-text-muted: #8892b0; /* Increased contrast — passes WCAG AA */
+
+  /* Borders */
+  --color-border: #44475a;
+  --color-border-hover: #6272a4;
+
+  /* Accent */
+  --color-accent: #bd93f9;
+  --color-accent-hover: #caa8fa;
+  --color-accent-muted: rgba(189, 147, 249, 0.15);
+
+  /* Status */
+  --color-success: #50fa7b;
+  --color-success-muted: rgba(80, 250, 123, 0.15);
+  --color-error: #ff5555;
+  --color-error-muted: rgba(255, 85, 85, 0.15);
+  --color-warning: #f1fa8c;
+  --color-warning-muted: rgba(241, 250, 140, 0.15);
+  --color-info: #8be9fd;
+  --color-info-muted: rgba(139, 233, 253, 0.15);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Easing */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.3);
 }
+
+/* ============================================
+   Tailwind Theme Integration
+   ============================================ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--color-bg-base);
+  --color-foreground: var(--color-text-primary);
+  --color-muted: var(--color-text-muted);
+  --color-accent: var(--color-accent);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
+
+/* ============================================
+   Base Styles
+   ============================================ */
 
 body {
-  background: var(--bg-base);
-  color: var(--text-base);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.bg-base { background-color: var(--bg-base); }
-.bg-panel { background-color: var(--bg-panel); }
-.text-base { color: var(--text-base); }
-.text-muted { color: var(--text-muted); }
-.border-base { border-color: var(--border-base); }
-.text-accent { color: var(--accent); }
-.btn {
-  background-color: var(--border-base);
-  color: var(--text-base);
+/* ============================================
+   Focus Styles
+   ============================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
-.btn:hover {
-  filter: brightness(1.1);
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ============================================
+   Animation Keyframes
+   ============================================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============================================
+   Animation Utilities
+   ============================================ */
+
+.animate-fade-in { animation: fadeIn 200ms var(--ease-out); }
+.animate-fade-in-up { animation: fadeInUp 200ms var(--ease-out); }
+.animate-fade-in-down { animation: fadeInDown 200ms var(--ease-out); }
+.animate-scale-in { animation: scaleIn 150ms var(--ease-out); }
+.animate-slide-in-right { animation: slideInRight 200ms var(--ease-out); }
+.animate-spin { animation: spin 800ms linear infinite; }
+.animate-pulse { animation: pulse 2s var(--ease-in-out) infinite; }
+
+/* ============================================
+   Button Base
+   ============================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  transition: transform 100ms var(--ease-out), background-color 150ms var(--ease-out), opacity 150ms var(--ease-out);
+  cursor: pointer;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  color: var(--color-bg-panel);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-border);
+}
+
+.btn-danger {
+  background-color: var(--color-error);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #ff6b6b;
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.btn-ghost:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* ============================================
+   Modal / Dialog
+   ============================================ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 150ms var(--ease-out);
+}
+
+.modal-content {
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  max-width: 28rem;
+  width: calc(100% - 2rem);
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  padding: var(--space-6);
+  animation: scaleIn 150ms var(--ease-out);
+}
+
+/* Exit animations */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes scaleOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+
+.modal-backdrop.closing {
+  animation: fadeOut 120ms var(--ease-out) forwards;
+}
+
+.modal-content.closing {
+  animation: scaleOut 120ms var(--ease-out) forwards;
+}
+
+/* ============================================
+   Dropdown
+   ============================================ */
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  margin-top: var(--space-2);
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  animation: fadeInDown 150ms var(--ease-out);
+  transform-origin: top right;
+}
+
+/* ============================================
+   Alert / Banner
+   ============================================ */
+
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border-width: 1px;
+  border-style: solid;
+  animation: fadeInDown 200ms var(--ease-out);
+}
+
+.alert-error {
+  background-color: var(--color-error-muted);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.alert-success {
+  background-color: var(--color-success-muted);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.alert-warning {
+  background-color: var(--color-warning-muted);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.alert-info {
+  background-color: var(--color-info-muted);
+  border-color: var(--color-info);
+  color: var(--color-info);
+}
+
+/* ============================================
+   Scrollbar (dark theme)
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* ============================================
+   OpenAPI / Swagger UI Overrides
+   ============================================ */
+
+.swagger-container {
+  --swagger-ui-color-background: var(--color-bg-base);
+  --swagger-ui-color-background-secondary: var(--color-bg-panel);
+}
+
+.swagger-container .swagger-ui {
+  font-family: var(--font-sans);
+}
+
+.swagger-container .swagger-ui .topbar {
+  display: none;
+}
+
+.swagger-container .swagger-ui {
+  background: transparent !important;
+  color: var(--color-text-primary) !important;
+}
+
+.swagger-container .swagger-ui .opblock-tag,
+.swagger-container .swagger-ui .opblock-tag:hover,
+.swagger-container .swagger-ui .opblock .opblock-summary-description,
+.swagger-container .swagger-ui .opblock .opblock-summary-path,
+.swagger-container .swagger-ui .opblock .opblock-summary-operation-id,
+.swagger-container .swagger-ui .operation-tag-content .opblock-tag-section h3,
+.swagger-container .swagger-ui .info .title,
+.swagger-container .swagger-ui .info .description p,
+.swagger-container .swagger-ui .info h1,
+.swagger-container .swagger-ui .info h2,
+.swagger-container .swagger-ui .info h3,
+.swagger-container .swagger-ui .info li,
+.swagger-container .swagger-ui .info p,
+.swagger-container .swagger-ui .info td,
+.swagger-container .swagger-ui .info th,
+.swagger-container .swagger-ui .model-title,
+.swagger-container .swagger-ui .model .property-name,
+.swagger-container .swagger-ui .model .property-type,
+.swagger-container .swagger-ui .parameter__name,
+.swagger-container .swagger-ui .parameter__type,
+.swagger-container .swagger-ui .response-col_status,
+.swagger-container .swagger-ui .response-col_description,
+.swagger-container .swagger-ui .response-col_links,
+.swagger-container .swagger-ui table thead tr td,
+.swagger-container .swagger-ui table thead tr th,
+.swagger-container .swagger-ui .tab li,
+.swagger-container .swagger-ui .scheme-container .schemes>label,
+.swagger-container .swagger-ui section.models h4,
+.swagger-container .swagger-ui section.models model-container,
+.swagger-container .swagger-ui .btn,
+.swagger-container .swagger-ui select,
+.swagger-container .swagger-ui input[type="text"],
+.swagger-container .swagger-ui textarea {
+  color: var(--color-text-primary) !important;
+}
+
+.swagger-container .swagger-ui .info .description p span,
+.swagger-container .swagger-ui .opblock .opblock-summary-description span,
+.swagger-container .swagger-ui .model-hint,
+.swagger-container .swagger-ui .parameter__extension,
+.swagger-container .swagger-ui .parameter__desc,
+.swagger-container .swagger-ui .response-col_description__inner p,
+.swagger-container .swagger-ui .response-col_links__inner {
+  color: var(--color-text-secondary) !important;
+}
+
+.swagger-container .swagger-ui .scheme-container {
+  background: var(--color-bg-panel) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+.swagger-container .swagger-ui .opblock {
+  border: 1px solid var(--color-border) !important;
+  background: var(--color-bg-panel) !important;
+}
+
+.swagger-container .swagger-ui .opblock .opblock-summary {
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.swagger-container .swagger-ui .opblock-body {
+  background: var(--color-bg-base) !important;
+}
+
+.swagger-container .swagger-ui table {
+  background: var(--color-bg-panel) !important;
+}
+
+.swagger-container .swagger-ui table tr,
+.swagger-container .swagger-ui table td,
+.swagger-container .swagger-ui table th {
+  border-color: var(--color-border) !important;
+}
+
+.swagger-container .swagger-ui .model-box {
+  background: var(--color-bg-panel) !important;
+  border-color: var(--color-border) !important;
+}
+
+.swagger-container .swagger-ui select,
+.swagger-container .swagger-ui input[type="text"],
+.swagger-container .swagger-ui textarea {
+  background: var(--color-bg-base) !important;
+  border-color: var(--color-border) !important;
+}
+
+.swagger-container .swagger-ui .btn {
+  border-color: var(--color-border) !important;
+}
+
+.swagger-container .swagger-ui section.models {
+  border-color: var(--color-border) !important;
+}
+
+.swagger-container .swagger-ui .opblock-description-wrapper p,
+.swagger-container .swagger-ui .opblock-external-docs-wrapper p,
+.swagger-container .swagger-ui .opblock-title_normal p {
+  color: var(--color-text-primary) !important;
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+
+/* ============================================
+   Skeleton Shimmer Animation
+   ============================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

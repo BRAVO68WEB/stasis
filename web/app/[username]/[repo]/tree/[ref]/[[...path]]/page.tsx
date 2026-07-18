@@ -1,26 +1,29 @@
-import { getTree, getBlob } from '@/lib/api';
-import { RepoFileTree } from '@/components/RepoFileTree';
-import Link from 'next/link';
+import { getTree, getBlob } from "@/lib/api";
+import { RepoFileTree } from "@/components/RepoFileTree";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
+import Link from "next/link";
 
 export default async function TreePage({
   params,
 }: {
-  params: Promise<{ username: string; repo: string; ref: string; path?: string[] }>;
+  params: Promise<{
+    username: string;
+    repo: string;
+    ref: string;
+    path?: string[];
+  }>;
 }) {
   const { username, repo, ref: refParam, path: pathSegments } = await params;
-  
-  const fullPath = [decodeURIComponent(refParam), ...(pathSegments || []).map(p => decodeURIComponent(p))].join('/');
 
-  let ref = '';
-  let path = '';
-  let entries: Awaited<ReturnType<typeof getTree>>['entries'] = [];
+  const ref = decodeURIComponent(refParam);
+  const path = (pathSegments || []).map((p) => decodeURIComponent(p)).join("/");
+
+  let entries: Awaited<ReturnType<typeof getTree>>["entries"] = [];
   let failed = false;
-  let readmeContent = '';
-  let readmePath = '';
+  let readmeContent = "";
+  let readmePath = "";
   try {
-    const data = await getTree(username, repo, fullPath);
-    ref = data.ref;
-    path = data.path;
+    const data = await getTree(username, repo, ref, path);
     entries = data.entries;
   } catch {
     failed = true;
@@ -28,10 +31,13 @@ export default async function TreePage({
 
   if (failed) {
     return (
-      <div className="p-6 text-sm text-base border border-base rounded-md bg-panel">
+      <div className="p-6 text-base border border-base rounded-md bg-panel">
         Unable to load directory.
         <div className="mt-2">
-          <Link href={`/${username}/${repo}`} className="text-accent hover:underline">
+          <Link
+            href={`/${username}/${repo}`}
+            className="text-accent hover:underline"
+          >
             Back to repository
           </Link>
         </div>
@@ -39,11 +45,17 @@ export default async function TreePage({
     );
   }
 
-  const tryNames = ["README.md", "readme.md", "README", "Readme.md", "README.MD"];
+  const tryNames = [
+    "README.md",
+    "readme.md",
+    "README",
+    "Readme.md",
+    "README.MD",
+  ];
   for (const name of tryNames) {
     const candidate = path ? `${path}/${name}` : name;
     try {
-      const data = await getBlob(username, repo, `${ref}/${candidate}`);
+      const data = await getBlob(username, repo, ref, candidate);
       readmeContent = data.content;
       readmePath = candidate;
       break;
@@ -52,23 +64,25 @@ export default async function TreePage({
 
   return (
     <div className="space-y-4">
-      <RepoFileTree 
-        owner={username} 
-        name={repo} 
-        currentRef={ref} 
-        path={path} 
-        entries={entries} 
+      <RepoFileTree
+        owner={username}
+        name={repo}
+        currentRef={ref}
+        path={path}
+        entries={entries}
       />
       {readmeContent && (
         <div className="border border-base rounded-md overflow-hidden bg-panel">
           <div className="px-4 py-3 border-b border-base flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
-              <span className="font-mono bg-base px-2 py-1 rounded text-muted">{ref}</span>
+              <span className="font-mono bg-base px-2 py-1 rounded text-muted">
+                {ref}
+              </span>
               <span className="text-muted">/</span>
               <span className="font-medium text-base">{readmePath}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Link 
+              <Link
                 href={`/${username}/${repo}/blob/${encodeURIComponent(ref)}/${encodeURIComponent(readmePath)}`}
                 className="text-xs px-2 py-1 rounded btn"
               >
@@ -76,8 +90,8 @@ export default async function TreePage({
               </Link>
             </div>
           </div>
-          <div className="p-4 whitespace-pre-wrap font-mono text-sm text-base">
-            {readmeContent}
+          <div className="p-4">
+            <MarkdownRenderer content={readmeContent} />
           </div>
         </div>
       )}
