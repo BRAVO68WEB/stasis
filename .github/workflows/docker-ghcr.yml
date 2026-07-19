@@ -6,7 +6,10 @@ on:
       - main
 
 jobs:
-  build-and-push-api:
+  # ============================================================
+  # API Image - amd64
+  # ============================================================
+  build-api-amd64:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -14,43 +17,83 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/stasis-api
-          tags: |
-            type=raw,value=latest
-            type=sha,format=short
-
-      - name: Build and push API image
+      - name: Build and push API amd64
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.api
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          attests: type=provenance,mode=max
+          tags: ghcr.io/${{ github.repository_owner }}/stasis-api:latest-amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-and-push-web:
+  # ============================================================
+  # API Image - arm64
+  # ============================================================
+  build-api-arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push API arm64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.api
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/stasis-api:latest-arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================
+  # API Manifest
+  # ============================================================
+  create-api-manifest:
+    runs-on: ubuntu-latest
+    needs: [build-api-amd64, build-api-arm64]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create API manifest
+        run: |
+          docker buildx imagetools create \
+            --tag ghcr.io/${{ github.repository_owner }}/stasis-api:latest \
+            --tag ghcr.io/${{ github.repository_owner }}/stasis-api:${{ github.sha }} \
+            ghcr.io/${{ github.repository_owner }}/stasis-api:latest-amd64 \
+            ghcr.io/${{ github.repository_owner }}/stasis-api:latest-arm64
+
+  # ============================================================
+  # Web Image - amd64
+  # ============================================================
+  build-web-amd64:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -58,43 +101,83 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/stasis-web
-          tags: |
-            type=raw,value=latest
-            type=sha,format=short
-
-      - name: Build and push Web image
+      - name: Build and push Web amd64
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.web
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          attests: type=provenance,mode=max
+          tags: ghcr.io/${{ github.repository_owner }}/stasis-web:latest-amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-and-push-aio:
+  # ============================================================
+  # Web Image - arm64
+  # ============================================================
+  build-web-arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Web arm64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.web
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/stasis-web:latest-arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================
+  # Web Manifest
+  # ============================================================
+  create-web-manifest:
+    runs-on: ubuntu-latest
+    needs: [build-web-amd64, build-web-arm64]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Web manifest
+        run: |
+          docker buildx imagetools create \
+            --tag ghcr.io/${{ github.repository_owner }}/stasis-web:latest \
+            --tag ghcr.io/${{ github.repository_owner }}/stasis-web:${{ github.sha }} \
+            ghcr.io/${{ github.repository_owner }}/stasis-web:latest-amd64 \
+            ghcr.io/${{ github.repository_owner }}/stasis-web:latest-arm64
+
+  # ============================================================
+  # AIO Image - amd64
+  # ============================================================
+  build-aio-amd64:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -102,38 +185,75 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/stasis-all-in-one
-          tags: |
-            type=raw,value=latest
-            type=sha,format=short
-
-      - name: Build and push AIO image
+      - name: Build and push AIO amd64
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.aio
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          attests: type=provenance,mode=max
+          tags: ghcr.io/${{ github.repository_owner }}/stasis-all-in-one:latest-amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ============================================================
+  # AIO Image - arm64
+  # ============================================================
+  build-aio-arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push AIO arm64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.aio
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/stasis-all-in-one:latest-arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================
+  # AIO Manifest
+  # ============================================================
+  create-aio-manifest:
+    runs-on: ubuntu-latest
+    needs: [build-aio-amd64, build-aio-arm64]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create AIO manifest
+        run: |
+          docker buildx imagetools create \
+            --tag ghcr.io/${{ github.repository_owner }}/stasis-all-in-one:latest \
+            --tag ghcr.io/${{ github.repository_owner }}/stasis-all-in-one:${{ github.sha }} \
+            ghcr.io/${{ github.repository_owner }}/stasis-all-in-one:latest-amd64 \
+            ghcr.io/${{ github.repository_owner }}/stasis-all-in-one:latest-arm64
