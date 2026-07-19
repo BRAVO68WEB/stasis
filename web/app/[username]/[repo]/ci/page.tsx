@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   listCIJobs,
   triggerCIJob,
+  getCIStatus,
   getCIStatusColor,
   getCIStatusBgColor,
   formatCIDuration,
@@ -147,6 +148,7 @@ export default function CIJobsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [ciEnabled, setCiEnabled] = useState<boolean | null>(null);
   const limit = 20;
 
   const [showTriggerForm, setShowTriggerForm] = useState(false);
@@ -160,6 +162,21 @@ export default function CIJobsPage() {
   });
 
   useEffect(() => {
+    async function checkCIStatus() {
+      try {
+        const status = await getCIStatus();
+        setCiEnabled(status.enabled);
+        if (status.enabled) {
+          fetchJobs();
+        } else {
+          setLoading(false);
+        }
+      } catch {
+        setCiEnabled(false);
+        setLoading(false);
+      }
+    }
+
     async function fetchJobs() {
       try {
         setLoading(true);
@@ -180,7 +197,7 @@ export default function CIJobsPage() {
       }
     }
 
-    fetchJobs();
+    checkCIStatus();
   }, [username, repo, page]);
 
   // Refresh running jobs periodically
@@ -243,6 +260,109 @@ export default function CIJobsPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--color-accent)]"></div>
+      </div>
+    );
+  }
+
+  if (ciEnabled === false) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <div className="text-center mb-8">
+          <svg
+            className="mx-auto h-16 w-16 text-[var(--color-text-muted)]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <h2 className="mt-4 text-2xl font-bold text-[var(--color-text-primary)]">
+            CI/CD Not Configured
+          </h2>
+          <p className="mt-2 text-[var(--color-text-muted)]">
+            Set up Stasis CI to automate your builds, tests, and deployments.
+          </p>
+        </div>
+
+        <div className="bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
+            Quick Setup
+          </h3>
+
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                1. Deploy the CI Runner
+              </h4>
+              <div className="bg-[var(--color-bg-base)] rounded-md p-4 font-mono text-sm">
+                <code className="text-[var(--color-accent)]">
+                  docker run -d \<br />
+                  &nbsp;&nbsp;--name stasis-ci \<br />
+                  &nbsp;&nbsp;-p 8081:8080 \<br />
+                  &nbsp;&nbsp;-v /var/run/docker.sock:/var/run/docker.sock \<br />
+                  &nbsp;&nbsp;-e CI_SERVICE_TOKEN=your-secret-token \<br />
+                  &nbsp;&nbsp;ghcr.io/get-stasis/stasis-ci:latest
+                </code>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                2. Configure Stasis
+              </h4>
+              <p className="text-sm text-[var(--color-text-muted)] mb-2">
+                Add these environment variables to your Stasis server:
+              </p>
+              <div className="bg-[var(--color-bg-base)] rounded-md p-4 font-mono text-sm">
+                <code className="text-[var(--color-accent)]">
+                  STASIS_CI_ENABLED=true<br />
+                  STASIS_CI_SERVER_URL=http://stasis-ci:8080<br />
+                  STASIS_CI_API_KEY=your-secret-token
+                </code>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                3. Add a CI Pipeline
+              </h4>
+              <p className="text-sm text-[var(--color-text-muted)] mb-2">
+                Create a <code className="bg-[var(--color-bg-base)] px-1 rounded">.stasis-ci.yaml</code> file in your repository:
+              </p>
+              <div className="bg-[var(--color-bg-base)] rounded-md p-4 font-mono text-sm">
+                <code className="text-[var(--color-accent)]">
+                  image:<br />
+                  &nbsp;&nbsp;name: "golang"<br />
+                  &nbsp;&nbsp;tag: "1.21-alpine"<br />
+                  <br />
+                  steps:<br />
+                  &nbsp;&nbsp;test:<br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;type: "exec"<br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;scripts:<br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- "go test ./..."
+                </code>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
+            <p className="text-sm text-[var(--color-text-muted)]">
+              For more information, see the{" "}
+              <a
+                href="/docs/ci/getting-started/quick-start"
+                className="text-[var(--color-accent)] hover:underline"
+              >
+                CI Quick Start Guide
+              </a>
+              .
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

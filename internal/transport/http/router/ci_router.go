@@ -250,6 +250,22 @@ func (r *Router) ciRouter() {
 		},
 	})
 
+	r.server.OpenAPIGenerator.RegisterDocs("GET", "/api/v1/ci/status", openapi.RouteDocs{
+		Summary:     "CI status",
+		Description: "Check if CI integration is enabled and configured",
+		Tags:        []string{"CI"},
+		Responses: map[int]openapi.ResponseDoc{
+			200: {
+				Description: "CI status",
+			},
+		},
+	})
+
+	// ========================================
+	// Global CI routes
+	// ========================================
+	r.server.GET("/api/v1/ci/status", ciHandler.GetCIStatus)
+
 	// ========================================
 	// Repository-scoped CI routes
 	// ========================================

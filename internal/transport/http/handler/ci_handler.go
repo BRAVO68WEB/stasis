@@ -759,3 +759,12 @@ func (h *CIHandler) WebhookJobUpdate(c *gin.Context) {
 		"job_id":  update.JobID,
 	})
 }
+
+// GetCIStatus returns the CI integration status
+// GET /api/v1/ci/status
+func (h *CIHandler) GetCIStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"enabled":    h.ciService.IsEnabled(),
+		"configured": h.ciService.IsEnabled(),
+	})
+}

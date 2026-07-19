@@ -933,6 +933,18 @@ import {
 } from "./types";
 
 /**
+ * Get CI integration status
+ */
+export async function getCIStatus(): Promise<{
+  enabled: boolean;
+  configured: boolean;
+}> {
+  return apiRequest<{ enabled: boolean; configured: boolean }>(
+    "/v1/ci/status",
+  );
+}
+
+/**
  * List CI jobs for a repository
  */
 export async function listCIJobs(
