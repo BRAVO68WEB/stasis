@@ -20,13 +20,30 @@ A self-hosted Git server with SSH and HTTP protocol support, built with Go. Feat
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: Pre-built Images (Recommended)
 
-- Docker & Docker Compose
-- Go 1.24+ (for development)
-- Bun or Node.js 18+ (for frontend development)
+No build required - use pre-built images from GHCR:
 
-### Running with Docker Compose
+```bash
+# Run all-in-one container
+docker run -d \
+  --name stasis \
+  -p 80:80 \
+  -p 2222:2222 \
+  -e STASIS_DATABASE_HOST=your-postgres-host \
+  -e STASIS_DB_PASSWORD=your-password \
+  ghcr.io/get-stasis/stasis-all-in-one:latest
+```
+
+**Available images:**
+- `ghcr.io/get-stasis/stasis-api` - API server (~50MB)
+- `ghcr.io/get-stasis/stasis-web` - Web frontend (~200MB)
+- `ghcr.io/get-stasis/stasis-all-in-one` - All services (~1.5GB)
+- `ghcr.io/get-stasis/stasis-ci` - CI runner (~500MB)
+
+See [Deployment Guide](docs/deployment/docker-ghcr.md) for details.
+
+### Option 2: Docker Compose
 
 ```bash
 # Clone the repository
@@ -46,10 +63,42 @@ docker compose up -d
 docker compose logs -f
 ```
 
+See [Docker Compose Scenarios](docs/deployment/docker-compose.md) for production setups.
+
+### Option 3: Development
+
+**Prerequisites:**
+- Go 1.24+
+- Bun or Node.js 18+
+- PostgreSQL
+
+```bash
+# Start dependencies
+docker compose up -d postgres
+
+# Run API
+go run ./cmd/server
+
+# Run frontend (in another terminal)
+cd web && bun install && bun run dev
+```
+
 The application will be available at:
 - **Web Interface**: http://localhost:3000
 - **API Server**: http://localhost:8080
 - **SSH Server**: localhost:2222
+
+## CI/CD
+
+Stasis includes a built-in CI runner. See [CI Examples](docs/ci/examples/) for pipeline configurations:
+
+- [Go Binary](docs/ci/examples/go-binary.md) - Cross-compile Go applications
+- [Python Django](docs/ci/examples/python-django.md) - Django with tests
+- [Rust Cargo](docs/ci/examples/rust-cargo.md) - Rust library publishing
+- [React SPA](docs/ci/examples/react-spa.md) - React with Lighthouse
+- [Docker Multi-Arch](docs/ci/examples/docker-multiarch.md) - Multi-architecture images
+- [Terraform](docs/ci/examples/terraform-infra.md) - Infrastructure as Code
+- [Security Scan](docs/ci/examples/security-scan.md) - Vulnerability scanning
 
 ## Contributing
 
